@@ -23,6 +23,7 @@ import { SettingsRow } from '@/components/profile/SettingsRow';
 import { GarminConnectModal } from '@/components/profile/GarminConnectModal';
 import { useGarmin } from '@/lib/use-garmin';
 import { apiPost, ApiError } from '@/lib/api';
+import { signOut } from '@/lib/use-auth';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -192,7 +193,18 @@ export default function SettingsScreen() {
               onPress={handleReset}
               isDestructive
             />
-            <SettingsRow icon={LogOut} label="Abmelden" onPress={() => {}} isDestructive isLast />
+            <SettingsRow
+              icon={LogOut}
+              label="Abmelden"
+              onPress={() =>
+                Alert.alert('Abmelden', 'Aktuelle Session beenden?', [
+                  { text: 'Abbrechen', style: 'cancel' },
+                  { text: 'Abmelden', style: 'destructive', onPress: () => signOut() },
+                ])
+              }
+              isDestructive
+              isLast
+            />
           </Card>
         </View>
       </ScrollView>

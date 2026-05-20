@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import EventSource from 'react-native-sse';
+import { getAccessToken } from './supabase';
 import type { ChatMessage } from '@/types/chat';
 
 const API_PORT = 8000;
@@ -57,11 +58,19 @@ export class ApiError extends Error {
   }
 }
 
+async function withAuth(init: RequestInit): Promise<RequestInit> {
+  const token = await getAccessToken();
+  const headers = new Headers(init.headers as HeadersInit | undefined);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return { ...init, headers };
+}
+
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const url = `${getApiBaseUrl()}${path}`;
+  const authed = await withAuth(init);
   let response: Response;
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, authed);
   } catch (err) {
     const reason = err instanceof Error ? err.message : 'network error';
     throw new ApiError(`Verbindung zum Server fehlgeschlagen (${reason})`, 0);
@@ -105,65 +114,78 @@ export function streamChat(
   handlers: StreamHandlers,
 ): StreamHandle {
   const url = `${getApiBaseUrl()}/chat/stream`;
+  let es: EventSource<StreamEvent> | null = null;
 
-  const es = new EventSource<StreamEvent>(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: serializeMessages(messages),
-    pollingInterval: 0,
-  });
+  // SSE needs the JWT in headers. EventSource constructor is sync, so we
+  // resolve the token first and only then open the stream.
+  getAccessToken()
+    .then((token) => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
 
-  es.addEventListener('token', (event) => {
-    if (!event.data) return;
-    try {
-      const payload = JSON.parse(event.data) as { delta?: string };
-      if (payload.delta) handlers.onToken(payload.delta);
-    } catch {
-      // skip malformed chunk
-    }
-  });
+      es = new EventSource<StreamEvent>(url, {
+        method: 'POST',
+        headers,
+        body: serializeMessages(messages),
+        pollingInterval: 0,
+      });
 
-  es.addEventListener('tool_call', (event) => {
-    if (!event.data || !handlers.onToolCall) return;
-    try {
-      const payload = JSON.parse(event.data) as {
-        name?: string;
-        args?: Record<string, unknown>;
-      };
-      if (payload.name) handlers.onToolCall(payload.name, payload.args ?? {});
-    } catch {
-      // skip
-    }
-  });
+      es.addEventListener('token', (event) => {
+        if (!event.data) return;
+        try {
+          const payload = JSON.parse(event.data) as { delta?: string };
+          if (payload.delta) handlers.onToken(payload.delta);
+        } catch {
+          // skip
+        }
+      });
 
-  es.addEventListener('tool_result', (event) => {
-    if (!event.data || !handlers.onToolResult) return;
-    try {
-      const payload = JSON.parse(event.data) as { name?: string; preview?: string };
-      if (payload.name) handlers.onToolResult(payload.name, payload.preview ?? '');
-    } catch {
-      // skip
-    }
-  });
+      es.addEventListener('tool_call', (event) => {
+        if (!event.data || !handlers.onToolCall) return;
+        try {
+          const payload = JSON.parse(event.data) as {
+            name?: string;
+            args?: Record<string, unknown>;
+          };
+          if (payload.name) handlers.onToolCall(payload.name, payload.args ?? {});
+        } catch {
+          // skip
+        }
+      });
 
-  es.addEventListener('done', (event) => {
-    if (!event.data) return;
-    try {
-      const payload = JSON.parse(event.data) as { id: string; model: string };
-      handlers.onDone(payload.id, payload.model);
-    } finally {
-      es.close();
-    }
-  });
+      es.addEventListener('tool_result', (event) => {
+        if (!event.data || !handlers.onToolResult) return;
+        try {
+          const payload = JSON.parse(event.data) as { name?: string; preview?: string };
+          if (payload.name) handlers.onToolResult(payload.name, payload.preview ?? '');
+        } catch {
+          // skip
+        }
+      });
 
-  es.addEventListener('error', (event) => {
-    const message =
-      'message' in event && typeof event.message === 'string'
-        ? event.message
-        : 'Connection error';
-    handlers.onError(message);
-    es.close();
-  });
+      es.addEventListener('done', (event) => {
+        if (!event.data) return;
+        try {
+          const payload = JSON.parse(event.data) as { id: string; model: string };
+          handlers.onDone(payload.id, payload.model);
+        } finally {
+          es?.close();
+        }
+      });
 
-  return { close: () => es.close() };
+      es.addEventListener('error', (event) => {
+        const message =
+          'message' in event && typeof event.message === 'string'
+            ? event.message
+            : 'Connection error';
+        handlers.onError(message);
+        es?.close();
+      });
+    })
+    .catch((err) => {
+      const message = err instanceof Error ? err.message : 'auth setup failed';
+      handlers.onError(message);
+    });
+
+  return { close: () => es?.close() };
 }
