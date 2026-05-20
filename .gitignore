@@ -28,6 +28,8 @@ mobile/*.p8
 mobile/*.p12
 mobile/*.key
 mobile/*.mobileprovision
+mobile/.env
+mobile/.env.local
 mobile/*.orig.*
 mobile/npm-debug.*
 mobile/yarn-error.*

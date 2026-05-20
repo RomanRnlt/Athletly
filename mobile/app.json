@@ -9,10 +9,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.athletly.v2"
+      "bundleIdentifier": "com.rnltlabs.athletly",
+      "usesAppleSignIn": true
     },
     "android": {
-      "package": "com.athletly.v2",
+      "package": "com.rnltlabs.athletly",
       "adaptiveIcon": {
         "backgroundColor": "#F0F2F5"
       }
@@ -21,7 +22,17 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.98592586024-k5s0mqd9g5qj4bm0h62u8anv0q7pq08g"
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }
