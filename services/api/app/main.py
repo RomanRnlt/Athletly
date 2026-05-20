@@ -172,7 +172,13 @@ async def get_profile(account_id: AccountId) -> ProfileResponse:
         )
         for s in sections
     ]
-    return ProfileResponse(sections=dtos, is_empty=all(d.empty for d in dtos))
+    filled = sum(1 for d in dtos if not d.empty)
+    return ProfileResponse(
+        sections=dtos,
+        is_empty=all(d.empty for d in dtos),
+        onboarding_completed=profile.is_onboarded(account_id),
+        filled_sections=filled,
+    )
 
 
 # ---------------------------------------------------------------------------

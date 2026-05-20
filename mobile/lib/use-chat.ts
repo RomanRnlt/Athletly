@@ -4,6 +4,7 @@ import type { ChatMessage } from '@/types/chat';
 
 interface UseChatOptions {
   initialMessages?: readonly ChatMessage[];
+  onStreamComplete?: () => void;
 }
 
 interface UseChatReturn {
@@ -25,7 +26,10 @@ function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function useChat({ initialMessages = [] }: UseChatOptions = {}): UseChatReturn {
+export function useChat({
+  initialMessages = [],
+  onStreamComplete,
+}: UseChatOptions = {}): UseChatReturn {
   const [messages, setMessages] = useState<readonly ChatMessage[]>(initialMessages);
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
@@ -88,6 +92,7 @@ export function useChat({ initialMessages = [] }: UseChatOptions = {}): UseChatR
           setToolStatus(null);
           streamingIdRef.current = null;
           streamHandleRef.current = null;
+          onStreamComplete?.();
         },
         onError: (message) => {
           setError(message);
@@ -105,7 +110,7 @@ export function useChat({ initialMessages = [] }: UseChatOptions = {}): UseChatR
         },
       });
     },
-    [messages, isStreaming],
+    [messages, isStreaming, onStreamComplete],
   );
 
   return { messages, isStreaming, toolStatus, error, sendMessage };

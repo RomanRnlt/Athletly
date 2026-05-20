@@ -80,3 +80,5 @@ class ProfileSectionDTO(BaseModel):
 class ProfileResponse(BaseModel):
     sections: list[ProfileSectionDTO]
     is_empty: bool
+    onboarding_completed: bool
+    filled_sections: int

@@ -10,11 +10,15 @@ export interface ProfileSection {
 interface ProfileResponse {
   sections: ProfileSection[];
   is_empty: boolean;
+  onboarding_completed: boolean;
+  filled_sections: number;
 }
 
 interface UseProfileReturn {
   sections: ProfileSection[];
   isEmpty: boolean;
+  onboardingCompleted: boolean;
+  filledSections: number;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -23,6 +27,8 @@ interface UseProfileReturn {
 export function useAthleteProfile(): UseProfileReturn {
   const [sections, setSections] = useState<ProfileSection[]>([]);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(true);
+  const [filledSections, setFilledSections] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +38,8 @@ export function useAthleteProfile(): UseProfileReturn {
       const data = await apiGet<ProfileResponse>('/profile');
       setSections(data.sections);
       setIsEmpty(data.is_empty);
+      setOnboardingCompleted(data.onboarding_completed);
+      setFilledSections(data.filled_sections);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Profil konnte nicht geladen werden';
       setError(message);
@@ -44,5 +52,13 @@ export function useAthleteProfile(): UseProfileReturn {
     refresh();
   }, [refresh]);
 
-  return { sections, isEmpty, isLoading, error, refresh };
+  return {
+    sections,
+    isEmpty,
+    onboardingCompleted,
+    filledSections,
+    isLoading,
+    error,
+    refresh,
+  };
 }
