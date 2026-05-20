@@ -13,10 +13,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
-import httpx
-
 from . import db, profile
-from .config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -213,54 +210,6 @@ def mark_onboarding_complete(account_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Web search (Brave)
-# ---------------------------------------------------------------------------
-
-
-BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
-
-
-def web_search(
-    account_id: str,  # noqa: ARG001 (account scoping not used here, kept for uniform signature)
-    query: str,
-    count: int = 5,
-) -> dict[str, Any]:
-    api_key = settings.brave_search_api_key
-    if not api_key:
-        return {"error": "Web search not configured. Set BRAVE_SEARCH_API_KEY."}
-
-    try:
-        response = httpx.get(
-            BRAVE_SEARCH_URL,
-            params={"q": query, "count": max(1, min(count, 10))},
-            headers={
-                "Accept": "application/json",
-                "Accept-Encoding": "gzip",
-                "X-Subscription-Token": api_key,
-            },
-            timeout=10.0,
-        )
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        return {"error": f"Brave Search HTTP {exc.response.status_code}: {exc.response.text[:200]}"}
-    except Exception as exc:
-        return {"error": f"Brave Search failed: {exc}"}
-
-    payload = response.json() or {}
-    web = (payload.get("web") or {}).get("results") or []
-    results = [
-        {
-            "title": item.get("title"),
-            "url": item.get("url"),
-            "snippet": item.get("description"),
-            "age": item.get("age"),
-        }
-        for item in web[:count]
-    ]
-    return {"query": query, "results": results, "returned": len(results)}
-
-
-# ---------------------------------------------------------------------------
 # Registry + schemas
 # ---------------------------------------------------------------------------
 
@@ -273,7 +222,6 @@ TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
     "read_athlete_profile": read_athlete_profile,
     "update_athlete_section": update_athlete_section,
     "mark_onboarding_complete": mark_onboarding_complete,
-    "web_search": web_search,
 }
 
 
@@ -396,35 +344,6 @@ TOOL_SCHEMAS = [
                 "instructions in your prompt define the exact done criteria. Idempotent."
             ),
             "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": (
-                "Search the public web (via Brave Search) for current info you do "
-                "not already know: race events, registration deadlines, training "
-                "methodology articles, news. Returns title + url + snippet for the "
-                "top results. Use sparingly - call only when the user asks about "
-                "something specific you would otherwise have to guess (a named "
-                "race, a coach's method, recent product). Do NOT call during the "
-                "onboarding conversation."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Search query. German or English depending on the target audience of the source you want.",
-                    },
-                    "count": {
-                        "type": "integer",
-                        "description": "How many results to return (default 5, cap 10).",
-                    },
-                },
-                "required": ["query"],
-            },
         },
     },
     {

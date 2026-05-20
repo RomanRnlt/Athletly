@@ -22,9 +22,31 @@ import litellm
 from . import garmin, profile, skills
 from .config import settings
 from .schemas import ChatMessage
-from .tools import TOOL_SCHEMAS, dispatch
+from .tools import TOOL_REGISTRY, TOOL_SCHEMAS, dispatch
 
 ONBOARDING_TURN_CAP = 18  # safety net: force-complete onboarding past this
+
+# Anthropic-executed server tools. We don't dispatch them locally (Anthropic
+# runs them inline during a single completion). We just emit UX events when
+# they fire so the mobile chat can show "Recherchiert im Web..." status.
+SERVER_TOOL_NAMES = {"web_search"}
+
+# Anthropic native web search server tool. Added to the tools array only
+# when the chat model is Anthropic. Provider executes the search, returns
+# results inline, no separate API key needed. Cost: ~$10 per 1000 searches.
+ANTHROPIC_WEB_SEARCH_TOOL: dict[str, Any] = {
+    "type": "web_search_20250305",
+    "name": "web_search",
+    "max_uses": 5,
+}
+
+
+def _tools_for_model(chosen_model: str) -> list[dict[str, Any]]:
+    """Combine function tools with provider-specific server tools."""
+    tools: list[dict[str, Any]] = list(TOOL_SCHEMAS)
+    if chosen_model.startswith("anthropic/"):
+        tools.append(ANTHROPIC_WEB_SEARCH_TOOL)
+    return tools
 
 logger = logging.getLogger(__name__)
 
@@ -154,13 +176,14 @@ async def stream_chat(
     """
     chosen_model = model or settings.chat_model
     history = _to_litellm_messages(account_id, messages)
+    tools_for_request = _tools_for_model(chosen_model)
 
     for turn in range(MAX_TOOL_TURNS):
         try:
             response = await litellm.acompletion(
                 model=chosen_model,
                 messages=history,
-                tools=TOOL_SCHEMAS,
+                tools=tools_for_request,
                 tool_choice="auto",
                 stream=True,
             )
@@ -212,12 +235,41 @@ async def stream_chat(
         if not tool_buf:
             return
 
-        # Build the assistant turn with its tool_calls and append to history.
+        # Separate function tools (we dispatch) from server tools (provider
+        # already executed them inline). The defensive name-based split
+        # handles older litellm versions that surface server_tool_use as
+        # regular tool_calls.
         ordered = sorted(tool_buf.items(), key=lambda kv: kv[0])
-        tool_calls_payload = []
+        function_calls: list[tuple[int, dict[str, str]]] = []
+        server_calls: list[dict[str, str]] = []
         for idx, slot in ordered:
+            if slot["name"] in TOOL_REGISTRY:
+                function_calls.append((idx, slot))
+            elif slot["name"] in SERVER_TOOL_NAMES:
+                server_calls.append(slot)
+            else:
+                # Unknown tool - treat as server (safer than dispatching).
+                server_calls.append(slot)
+
+        # Emit UX events for server tools (mobile chat shows the status).
+        for slot in server_calls:
+            try:
+                args = json.loads(slot["arguments"] or "{}")
+            except json.JSONDecodeError:
+                args = {}
+            yield ("tool_call", {"name": slot["name"], "args": args})
+            yield ("tool_result", {"name": slot["name"], "preview": "server-side"})
+
+        if not function_calls:
+            # The model only used server tools; the provider already produced
+            # the final response inline. No further loop iteration needed.
+            return
+
+        # Build the assistant turn with its (function) tool_calls.
+        function_tool_calls_payload = []
+        for idx, slot in function_calls:
             call_id = slot["id"] or f"call_{turn}_{idx}"
-            tool_calls_payload.append(
+            function_tool_calls_payload.append(
                 {
                     "id": call_id,
                     "type": "function",
@@ -232,11 +284,11 @@ async def stream_chat(
             {
                 "role": "assistant",
                 "content": assistant_content or None,
-                "tool_calls": tool_calls_payload,
+                "tool_calls": function_tool_calls_payload,
             }
         )
 
-        for tc in tool_calls_payload:
+        for tc in function_tool_calls_payload:
             name = tc["function"]["name"]
             args_str = tc["function"]["arguments"]
             try:
@@ -281,8 +333,6 @@ def _preview(result: dict[str, Any]) -> str:
         return f"{len(result['non_empty_sections'])} sections filled"
     if "section" in result and result.get("status") == "ok":
         return f"updated {result['section']} ({result['stored_chars']} chars)"
-    if "query" in result and "results" in result:
-        return f"{result.get('returned', 0)} web hits for {result['query']!r}"
     if "current" in result and "previous" in result:
         cur = result["current"]
         return (
