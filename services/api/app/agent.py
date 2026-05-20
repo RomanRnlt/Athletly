@@ -19,10 +19,12 @@ from typing import Any
 
 import litellm
 
-from . import garmin, profile
+from . import garmin, profile, skills
 from .config import settings
 from .schemas import ChatMessage
 from .tools import TOOL_SCHEMAS, dispatch
+
+ONBOARDING_TURN_CAP = 18  # safety net: force-complete onboarding past this
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +86,27 @@ def _sanitize(text: str) -> str:
     return text.replace("—", "-").replace("–", "-")
 
 
-def _system_prompt(account_id: str) -> str:
-    parts: list[str] = [BASE_SYSTEM_PROMPT]
+def _system_prompt(account_id: str, messages: list[ChatMessage]) -> str:
+    parts: list[str] = []
+
+    onboarded = profile.is_onboarded(account_id)
+    turns = len([m for m in messages if m.role == "user"])
+
+    # Safety net: never let onboarding run forever, even if the model never
+    # called mark_onboarding_complete. After the cap we flip the flag
+    # deterministically so the next turn is normal coach mode.
+    if not onboarded and turns >= ONBOARDING_TURN_CAP:
+        profile.mark_onboarded(account_id)
+        onboarded = True
+
+    if not onboarded:
+        # Onboarding mode: skill content goes FIRST so the model treats it
+        # as the dominant directive. Base coach prompt comes after.
+        skill = skills.load_skill("onboarding")
+        if skill:
+            parts.append(skill)
+
+    parts.append(BASE_SYSTEM_PROMPT)
 
     status = garmin.get_status(account_id)
     if status["connected"]:
@@ -102,19 +123,20 @@ def _system_prompt(account_id: str) -> str:
 
     narrative = profile.narrate_profile(account_id)
     if narrative:
-        parts.append("Athlete-Profil (das ist alles was du dauerhaft ueber Roman weisst):\n" + narrative)
-    else:
+        parts.append("Athlete-Profil (das ist alles was du dauerhaft ueber den User weisst):\n" + narrative)
+    elif onboarded:
         parts.append(
-            "Athlete-Profil: leer. Du kennst Roman noch nicht. Frag organisch nach "
-            "Zielen, Vorlieben, Constraints, und speichere wichtiges per "
-            "update_athlete_section ab. Nicht alles auf einmal abfragen."
+            "Athlete-Profil: leer. Frag organisch nach Zielen, Vorlieben, Constraints, "
+            "und speichere wichtiges per update_athlete_section ab."
         )
 
     return "\n\n".join(parts)
 
 
 def _to_litellm_messages(account_id: str, messages: list[ChatMessage]) -> list[dict[str, Any]]:
-    history: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt(account_id)}]
+    history: list[dict[str, Any]] = [
+        {"role": "system", "content": _system_prompt(account_id, messages)}
+    ]
     for m in messages:
         history.append({"role": m.role, "content": m.content})
     return history
@@ -249,6 +271,8 @@ def _preview(result: dict[str, Any]) -> str:
     """Short human-readable summary of a tool result for SSE clients."""
     if "error" in result:
         return f"error: {result['error']}"
+    if "onboarding_completed" in result:
+        return f"onboarding done ({result.get('filled_sections', 0)} sections filled)"
     if "activities" in result:
         return f"{result.get('returned', len(result['activities']))} activities"
     if "metrics" in result:

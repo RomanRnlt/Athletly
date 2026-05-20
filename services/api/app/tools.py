@@ -199,6 +199,16 @@ def update_athlete_section(
     }
 
 
+def mark_onboarding_complete(account_id: str) -> dict[str, Any]:
+    """Mark this account as onboarded. Idempotent."""
+    profile.mark_onboarded(account_id)
+    return {
+        "status": "ok",
+        "onboarding_completed": True,
+        "filled_sections": profile.count_filled_sections(account_id),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Registry + schemas
 # ---------------------------------------------------------------------------
@@ -211,6 +221,7 @@ TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
     "get_weekly_load": get_weekly_load,
     "read_athlete_profile": read_athlete_profile,
     "update_athlete_section": update_athlete_section,
+    "mark_onboarding_complete": mark_onboarding_complete,
 }
 
 
@@ -320,6 +331,19 @@ TOOL_SCHEMAS = [
                 },
                 "required": ["section", "content"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mark_onboarding_complete",
+            "description": (
+                "Mark the onboarding conversation as complete. Call this when the "
+                "user has shared enough about themselves (goal, sports, life context, "
+                "history, preferences) that you can coach them effectively. The skill "
+                "instructions in your prompt define the exact done criteria. Idempotent."
+            ),
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
