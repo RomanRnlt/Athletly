@@ -33,6 +33,8 @@ export function getApiBaseUrl(): string {
 
 interface StreamHandlers {
   onToken: (delta: string) => void;
+  onToolCall?: (name: string, args: Record<string, unknown>) => void;
+  onToolResult?: (name: string, preview: string) => void;
   onDone: (id: string, model: string) => void;
   onError: (message: string) => void;
 }
@@ -41,11 +43,61 @@ interface StreamHandle {
   close: () => void;
 }
 
-type StreamEvent = 'token' | 'done' | 'error';
+type StreamEvent = 'token' | 'tool_call' | 'tool_result' | 'done' | 'error';
 
 function serializeMessages(messages: readonly ChatMessage[]): string {
   const slim = messages.map((m) => ({ role: m.role, content: m.content }));
   return JSON.stringify({ messages: slim });
+}
+
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  const url = `${getApiBaseUrl()}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'network error';
+    throw new ApiError(`Verbindung zum Server fehlgeschlagen (${reason})`, 0);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const isJson = contentType.includes('application/json');
+  const body = isJson ? await response.json().catch(() => null) : await response.text();
+
+  if (!response.ok) {
+    const detail =
+      (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string'
+        ? body.detail
+        : null) ??
+      (typeof body === 'string' && body.length > 0 ? body : null) ??
+      `HTTP ${response.status}`;
+    throw new ApiError(detail, response.status);
+  }
+
+  return body as T;
+}
+
+export function apiGet<T>(path: string): Promise<T> {
+  return request<T>(path, { method: 'GET' });
+}
+
+export function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+export function apiDelete<T>(path: string): Promise<T> {
+  return request<T>(path, { method: 'DELETE' });
 }
 
 export function streamChat(
@@ -68,6 +120,29 @@ export function streamChat(
       if (payload.delta) handlers.onToken(payload.delta);
     } catch {
       // skip malformed chunk
+    }
+  });
+
+  es.addEventListener('tool_call', (event) => {
+    if (!event.data || !handlers.onToolCall) return;
+    try {
+      const payload = JSON.parse(event.data) as {
+        name?: string;
+        args?: Record<string, unknown>;
+      };
+      if (payload.name) handlers.onToolCall(payload.name, payload.args ?? {});
+    } catch {
+      // skip
+    }
+  });
+
+  es.addEventListener('tool_result', (event) => {
+    if (!event.data || !handlers.onToolResult) return;
+    try {
+      const payload = JSON.parse(event.data) as { name?: string; preview?: string };
+      if (payload.name) handlers.onToolResult(payload.name, payload.preview ?? '');
+    } catch {
+      // skip
     }
   });
 

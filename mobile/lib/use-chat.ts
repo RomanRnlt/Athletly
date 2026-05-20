@@ -9,9 +9,17 @@ interface UseChatOptions {
 interface UseChatReturn {
   messages: readonly ChatMessage[];
   isStreaming: boolean;
+  toolStatus: string | null;
   error: string | null;
   sendMessage: (text: string) => void;
 }
+
+const TOOL_LABELS: Record<string, string> = {
+  search_activities: 'Sucht deine Aktivitaeten',
+  get_activity_details: 'Schaut sich einen Workout genauer an',
+  get_daily_metrics: 'Liest deine Gesundheitsdaten',
+  get_weekly_load: 'Berechnet dein Wochenvolumen',
+};
 
 function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -20,6 +28,7 @@ function makeId(prefix: string): string {
 export function useChat({ initialMessages = [] }: UseChatOptions = {}): UseChatReturn {
   const [messages, setMessages] = useState<readonly ChatMessage[]>(initialMessages);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const streamHandleRef = useRef<{ close: () => void } | null>(null);
   const streamingIdRef = useRef<string | null>(null);
@@ -55,25 +64,35 @@ export function useChat({ initialMessages = [] }: UseChatOptions = {}): UseChatR
       setMessages(next);
       setError(null);
       setIsStreaming(true);
+      setToolStatus(null);
 
       const historyForServer = [...messages, userMessage];
 
       streamHandleRef.current = streamChat(historyForServer, {
         onToken: (delta) => {
+          setToolStatus(null);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === streamingIdRef.current ? { ...m, content: m.content + delta } : m,
             ),
           );
         },
+        onToolCall: (name) => {
+          setToolStatus(TOOL_LABELS[name] ?? `Ruft ${name} auf`);
+        },
+        onToolResult: () => {
+          setToolStatus(null);
+        },
         onDone: () => {
           setIsStreaming(false);
+          setToolStatus(null);
           streamingIdRef.current = null;
           streamHandleRef.current = null;
         },
         onError: (message) => {
           setError(message);
           setIsStreaming(false);
+          setToolStatus(null);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === streamingIdRef.current
@@ -89,5 +108,5 @@ export function useChat({ initialMessages = [] }: UseChatOptions = {}): UseChatR
     [messages, isStreaming],
   );
 
-  return { messages, isStreaming, error, sendMessage };
+  return { messages, isStreaming, toolStatus, error, sendMessage };
 }

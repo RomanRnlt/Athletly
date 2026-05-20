@@ -4,9 +4,7 @@ import { GradientHeader } from '@/components/ui/GradientHeader';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { useChat } from '@/lib/use-chat';
-import { mockChatMessages } from '@/lib/mock-data';
 import { Colors } from '@/lib/colors';
-import type { ChatMessage } from '@/types/chat';
 
 function StatusDot({ online }: { online: boolean }) {
   return (
@@ -19,11 +17,31 @@ function StatusDot({ online }: { online: boolean }) {
   );
 }
 
+function EmptyState() {
+  return (
+    <View className="flex-1 items-center justify-center px-8">
+      <Text className="text-text-primary text-base font-medium mb-2">
+        Hi Roman.
+      </Text>
+      <Text className="text-text-secondary text-sm text-center leading-5">
+        Frag mich was zu deinem Training, deinem Schlaf oder deinem Wochenvolumen.
+        Wenn deine Garmin-Daten verbunden sind kann ich konkrete Zahlen ziehen.
+      </Text>
+    </View>
+  );
+}
+
+function subtitleFor(isStreaming: boolean, toolStatus: string | null): string {
+  if (toolStatus) return `${toolStatus}...`;
+  if (isStreaming) return 'Ohm schreibt...';
+  return 'Ohm ist online';
+}
+
 export default function ChatScreen() {
-  const initial = useMemo<ChatMessage[]>(() => [...mockChatMessages], []);
-  const { messages, isStreaming, error, sendMessage } = useChat({ initialMessages: initial });
+  const { messages, isStreaming, toolStatus, error, sendMessage } = useChat();
 
   const inverted = useMemo(() => [...messages].reverse(), [messages]);
+  const isEmpty = messages.length === 0;
 
   return (
     <KeyboardAvoidingView
@@ -33,18 +51,26 @@ export default function ChatScreen() {
       <View className="flex-1 bg-background">
         <GradientHeader
           title="Chat"
-          subtitle={isStreaming ? 'Ohm schreibt...' : 'Ohm ist online'}
+          subtitle={subtitleFor(isStreaming, toolStatus)}
           rightContent={<StatusDot online={!error} />}
         />
 
-        <FlatList
-          data={inverted}
-          inverted
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChatBubble message={item} />}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}
-          showsVerticalScrollIndicator={false}
-        />
+        {isEmpty ? (
+          <EmptyState />
+        ) : (
+          <FlatList
+            data={inverted}
+            inverted
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <ChatBubble message={item} />}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 12,
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
 
         {error && (
           <View className="px-4 py-2 bg-error-light">
