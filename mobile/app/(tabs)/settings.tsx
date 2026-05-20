@@ -23,7 +23,7 @@ import { SettingsRow } from '@/components/profile/SettingsRow';
 import { GarminConnectModal } from '@/components/profile/GarminConnectModal';
 import { useGarmin } from '@/lib/use-garmin';
 import { apiPost, ApiError } from '@/lib/api';
-import { signOut } from '@/lib/use-auth';
+import { signOut, useAuth } from '@/lib/use-auth';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -48,6 +48,7 @@ function formatRelative(iso: string | null): string | null {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { session } = useAuth();
   const { status, isSyncing, error, refresh, sync, disconnect } = useGarmin();
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -103,15 +104,15 @@ export default function SettingsScreen() {
   };
 
   const garminConnected = status?.connected ?? false;
-  const garminEmail = status?.display_name || status?.email || 'noch nicht verbunden';
-  const garminCreatedAt = status?.connected_since;
+  const accountEmail = session?.user?.email ?? 'unbekannter Account';
+  const accountCreatedAt = session?.user?.created_at;
 
   return (
     <View className="flex-1 bg-background">
       <GradientHeader title="Einstellungen" />
 
       <ScrollView className="flex-1" contentContainerClassName="pb-8">
-        <ProfileHeader email={garminEmail} createdAt={garminCreatedAt ?? undefined} />
+        <ProfileHeader email={accountEmail} createdAt={accountCreatedAt ?? undefined} />
 
         {error && (
           <View className="mx-4 mb-2 px-4 py-2.5 rounded-xl bg-error-light">
