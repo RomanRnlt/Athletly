@@ -10,7 +10,6 @@ import {
   LogOut,
   Moon,
   RefreshCw,
-  Unlink,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -98,6 +97,7 @@ export default function SettingsScreen() {
               isConnected={garminConnected}
               lastSync={status?.last_sync_at ?? undefined}
               onConnect={() => setModalVisible(true)}
+              onDisconnect={handleDisconnect}
             />
             <ServiceStatus
               name="Apple Health"
@@ -109,32 +109,23 @@ export default function SettingsScreen() {
           </Card>
 
           {garminConnected && (
-            <View className="mt-3 gap-2">
-              <View className="flex-row items-center justify-between bg-surface rounded-2xl px-4 py-3">
-                <View className="flex-1 mr-3">
-                  <Text className="text-text-primary text-sm font-medium">
-                    {status?.activity_count ?? 0} Aktivitaeten in der DB
-                  </Text>
-                  <Text className="text-text-muted text-xs mt-0.5">
-                    {formatRelative(status?.last_sync_at ?? null) ?? 'Noch nie synchronisiert'}
-                  </Text>
-                </View>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={RefreshCw}
-                  label={isSyncing ? 'Synct...' : 'Sync'}
-                  onPress={handleSync}
-                  loading={isSyncing}
-                  disabled={isSyncing}
-                />
+            <View className="mt-3 flex-row items-center justify-between bg-surface rounded-2xl px-4 py-3">
+              <View className="flex-1 mr-3">
+                <Text className="text-text-primary text-sm font-medium">
+                  {status?.activity_count ?? 0} Aktivitaeten in der DB
+                </Text>
+                <Text className="text-text-muted text-xs mt-0.5">
+                  {formatRelative(status?.last_sync_at ?? null) ?? 'Noch nie synchronisiert'}
+                </Text>
               </View>
               <Button
-                variant="ghost"
+                variant="primary"
                 size="sm"
-                icon={Unlink}
-                label="Garmin trennen"
-                onPress={handleDisconnect}
+                icon={RefreshCw}
+                label={isSyncing ? 'Synct...' : 'Sync'}
+                onPress={handleSync}
+                loading={isSyncing}
+                disabled={isSyncing}
               />
             </View>
           )}

@@ -10,6 +10,7 @@ interface ServiceStatusProps {
   isConnected: boolean;
   lastSync?: string;
   onConnect?: () => void;
+  onDisconnect?: () => void;
   isLast?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function ServiceStatus({
   isConnected,
   lastSync,
   onConnect,
+  onDisconnect,
   isLast = false,
 }: ServiceStatusProps) {
   const borderClass = isLast ? '' : 'border-b border-divider';
@@ -60,6 +62,9 @@ export function ServiceStatus({
         )}
       </View>
 
+      {isConnected && onDisconnect && (
+        <Button variant="ghost" size="sm" label="Trennen" onPress={onDisconnect} />
+      )}
       {!isConnected && onConnect && (
         <Button variant="ghost" size="sm" label="Verbinden" onPress={onConnect} />
       )}
