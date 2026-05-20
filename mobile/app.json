@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Athletly",
+    "slug": "athletly-v2",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "athletly",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.athletly.v2"
+    },
+    "android": {
+      "package": "com.athletly.v2",
+      "adaptiveIcon": {
+        "backgroundColor": "#F0F2F5"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
