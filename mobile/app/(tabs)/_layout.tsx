@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Calendar, MessageCircle, Settings } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
+import { useAthleteProfile } from '@/lib/use-profile';
 
 const TAB_BAR_STYLE = {
   backgroundColor: '#FFFFFF',
@@ -15,6 +16,9 @@ const TAB_BAR_STYLE = {
 const TAB_BAR_LABEL_STYLE = { fontSize: 10 } as const;
 
 export default function TabLayout() {
+  const { onboardingCompleted, isLoading } = useAthleteProfile();
+  const chatBadge = !isLoading && !onboardingCompleted ? '1' : undefined;
+
   return (
     <Tabs
       screenOptions={{
@@ -37,6 +41,13 @@ export default function TabLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+          tabBarBadge: chatBadge,
+          tabBarBadgeStyle: {
+            backgroundColor: Colors.error,
+            color: '#FFFFFF',
+            fontSize: 11,
+            fontWeight: '600',
+          },
         }}
       />
       <Tabs.Screen

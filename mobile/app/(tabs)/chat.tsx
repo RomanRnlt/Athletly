@@ -46,7 +46,7 @@ function subtitleFor(
 
 export default function ChatScreen() {
   const profile = useAthleteProfile();
-  const { messages, isStreaming, toolStatus, error, sendMessage } = useChat({
+  const { messages, isStreaming, toolStatus, error, sendMessage, triggerWelcome } = useChat({
     onStreamComplete: () => {
       profile.refresh();
     },
@@ -55,6 +55,24 @@ export default function ChatScreen() {
   const inverted = useMemo(() => [...messages].reverse(), [messages]);
   const isEmpty = messages.length === 0;
   const showOnboardingBar = !profile.isLoading && !profile.onboardingCompleted;
+
+  // Proactive first message: when the user lands here and the agent has
+  // never started onboarding (no sections filled, no chat yet), fire the
+  // opening turn automatically so the conversation feels coach-initiated.
+  React.useEffect(() => {
+    if (profile.isLoading) return;
+    if (profile.onboardingCompleted) return;
+    if (profile.filledSections > 0) return;
+    if (messages.length > 0 || isStreaming) return;
+    triggerWelcome();
+  }, [
+    profile.isLoading,
+    profile.onboardingCompleted,
+    profile.filledSections,
+    messages.length,
+    isStreaming,
+    triggerWelcome,
+  ]);
 
   return (
     <KeyboardAvoidingView
