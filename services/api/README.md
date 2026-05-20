@@ -15,8 +15,11 @@ cp .env.example .env   # then fill in keys, or copy from a working source
 ## Run
 
 ```bash
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+`--host 0.0.0.0` is required for real-device testing (phone reaches the
+Mac's LAN IP). Without it uvicorn only listens on `127.0.0.1`.
 
 Health check:
 

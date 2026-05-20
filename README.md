@@ -21,8 +21,12 @@ cd services/api
 uv venv --python 3.13
 uv pip install -e .
 # .env already has working keys; .env.example documents what is needed
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+`--host 0.0.0.0` is required so a real device on the same Wifi can reach
+the backend. Without it uvicorn binds to `127.0.0.1` only and the simulator
+works but the phone hangs with "could not connect".
 
 Health: `curl http://localhost:8000/health`
 
