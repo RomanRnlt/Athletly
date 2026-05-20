@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -8,12 +8,15 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import {
+  GoogleSigninButton,
+} from '@react-native-google-signin/google-signin';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Apple, Mail, ArrowRight } from 'lucide-react-native';
+import { Mail, ArrowRight } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Colors } from '@/lib/colors';
 import {
   signInWithEmail,
   signUpWithEmail,
@@ -22,45 +25,7 @@ import { signInWithApple, signInWithGoogle } from '@/lib/social-auth';
 
 type Mode = 'choose' | 'email-signin' | 'email-signup';
 
-function AppleButton({ onPress, loading }: { onPress: () => void; loading: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={loading}
-      className="h-[52px] rounded-[14px] flex-row items-center justify-center gap-2"
-      style={{ backgroundColor: '#000', opacity: loading ? 0.6 : 1 }}
-      accessibilityRole="button"
-      accessibilityLabel="Mit Apple anmelden"
-    >
-      <Apple size={20} color="#FFF" strokeWidth={2} fill="#FFF" />
-      <Text className="text-white text-base font-semibold">Mit Apple anmelden</Text>
-    </Pressable>
-  );
-}
-
-function GoogleButton({ onPress, loading }: { onPress: () => void; loading: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={loading}
-      className="h-[52px] rounded-[14px] flex-row items-center justify-center gap-2 bg-white"
-      style={{
-        borderWidth: 1,
-        borderColor: Colors.divider,
-        opacity: loading ? 0.6 : 1,
-      }}
-      accessibilityRole="button"
-      accessibilityLabel="Mit Google anmelden"
-    >
-      <View className="w-5 h-5 items-center justify-center">
-        <Text className="text-base font-bold" style={{ color: '#4285F4' }}>G</Text>
-      </View>
-      <Text className="text-text-primary text-base font-semibold">
-        Mit Google anmelden
-      </Text>
-    </Pressable>
-  );
-}
+const SOCIAL_BUTTON_HEIGHT = 48;
 
 function ErrorBox({ message }: { message: string }) {
   return (
@@ -77,6 +42,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAvailable)
+      .catch(() => setAppleAvailable(false));
+  }, []);
 
   const runProvider = async (fn: () => Promise<void>, label: string) => {
     setError(null);
@@ -132,13 +105,16 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          <View className="bg-white rounded-3xl p-6 gap-3" style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 16,
-            elevation: 6,
-          }}>
+          <View
+            className="bg-white rounded-3xl p-6 gap-3"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.08,
+              shadowRadius: 16,
+              elevation: 6,
+            }}
+          >
             {mode === 'choose' && (
               <>
                 <Text className="text-text-primary text-lg font-semibold mb-1">
@@ -148,16 +124,40 @@ export default function LoginScreen() {
                   Melde dich an oder erstelle einen Account.
                 </Text>
 
-                {Platform.OS === 'ios' && (
-                  <AppleButton
-                    onPress={() => runProvider(signInWithApple, 'Apple-Anmeldung')}
-                    loading={loading}
+                {appleAvailable && (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={
+                      AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                    }
+                    buttonStyle={
+                      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                    }
+                    cornerRadius={12}
+                    style={{
+                      width: '100%',
+                      height: SOCIAL_BUTTON_HEIGHT,
+                      opacity: loading ? 0.6 : 1,
+                    }}
+                    onPress={() =>
+                      runProvider(signInWithApple, 'Apple-Anmeldung')
+                    }
                   />
                 )}
-                <GoogleButton
-                  onPress={() => runProvider(signInWithGoogle, 'Google-Anmeldung')}
-                  loading={loading}
-                />
+
+                <View className="items-center" style={{ height: SOCIAL_BUTTON_HEIGHT }}>
+                  <GoogleSigninButton
+                    size={GoogleSigninButton.Size.Wide}
+                    color={GoogleSigninButton.Color.Light}
+                    onPress={() =>
+                      runProvider(signInWithGoogle, 'Google-Anmeldung')
+                    }
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      height: SOCIAL_BUTTON_HEIGHT,
+                    }}
+                  />
+                </View>
 
                 <View className="flex-row items-center my-1 gap-3">
                   <View className="flex-1 h-px bg-divider" />
