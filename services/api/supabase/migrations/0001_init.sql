@@ -31,9 +31,10 @@ end$$;
 -- ---------------------------------------------------------------------------
 
 create table public.athlete_profiles (
-    account_id  uuid        primary key references auth.users (id) on delete cascade,
-    sections    jsonb       not null default '[]'::jsonb,
-    updated_at  timestamptz not null default now()
+    account_id            uuid        primary key references auth.users (id) on delete cascade,
+    sections              jsonb       not null default '[]'::jsonb,
+    onboarding_completed  boolean     not null default false,
+    updated_at            timestamptz not null default now()
 );
 
 alter table public.athlete_profiles enable row level security;

@@ -31,7 +31,6 @@ class Settings:
     supabase_url: str | None
     supabase_anon_key: str | None
     supabase_service_role_key: str | None
-    supabase_jwt_secret: str | None
 
 
 def _parse_origins(raw: str) -> list[str]:
@@ -55,7 +54,6 @@ def load_settings() -> Settings:
         supabase_url=os.getenv("SUPABASE_URL") or None,
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY") or None,
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or None,
-        supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET") or None,
     )
 
 

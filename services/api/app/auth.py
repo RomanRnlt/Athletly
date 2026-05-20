@@ -1,14 +1,13 @@
 """JWT auth dependency for FastAPI.
 
-Verifies Supabase access tokens. Supports both:
-- ES256 (new asymmetric JWT signing keys, default for Supabase projects
-  created or migrated after October 2025) via the project's JWKS endpoint.
-- HS256 (legacy symmetric secret) as fallback while older sessions are
-  still in circulation.
+Verifies Supabase access tokens via the project's JWKS endpoint (ES256
+asymmetric signing keys, the Q2 2026 default). PyJWKClient caches the
+public keys in-process so verification stays a local CPU operation
+with no per-request network call to Supabase Auth.
 
-The JWKS client caches public keys in-process and refreshes on miss so
-verification stays a local CPU operation - no per-request network call
-to Supabase Auth (the recommended pattern in the Q2 2026 docs).
+HS256 + legacy JWT secret is deliberately NOT supported - the project
+is post-migration and only mints ES256 tokens. If we ever need the
+fallback, see git history for the dual-algorithm version.
 """
 
 from __future__ import annotations
@@ -35,17 +34,14 @@ class AuthError(HTTPException):
         )
 
 
-SUPPORTED_ALGORITHMS = ["ES256", "RS256", "HS256"]
+SUPPORTED_ALGORITHMS = ["ES256", "RS256"]
 
 
 @lru_cache(maxsize=1)
-def _jwks_client() -> PyJWKClient | None:
-    """Cached JWKS client pointed at the Supabase project."""
+def _jwks_client() -> PyJWKClient:
     if not settings.supabase_url:
-        return None
+        raise RuntimeError("SUPABASE_URL is not configured")
     jwks_url = f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
-    # cache_keys keeps fetched public keys; lifespan=600s is fine, key rotation
-    # is rare and the client refetches on miss anyway.
     return PyJWKClient(jwks_url, cache_keys=True, lifespan=600)
 
 
@@ -57,30 +53,12 @@ def _decode_token(token: str) -> dict:
 
     alg = header.get("alg")
     if alg not in SUPPORTED_ALGORITHMS:
-        raise AuthError(f"Unsupported token algorithm: {alg}")
+        raise AuthError(
+            f"Unsupported token algorithm {alg!r}. Expected one of {SUPPORTED_ALGORITHMS}."
+        )
 
-    # HS256: legacy path. Verify with the symmetric JWT secret.
-    if alg == "HS256":
-        if not settings.supabase_jwt_secret:
-            raise AuthError("SUPABASE_JWT_SECRET not set; cannot verify HS256 token")
-        try:
-            return jwt.decode(
-                token,
-                settings.supabase_jwt_secret,
-                algorithms=["HS256"],
-                audience="authenticated",
-            )
-        except jwt.ExpiredSignatureError as exc:
-            raise AuthError("Token expired") from exc
-        except jwt.InvalidTokenError as exc:
-            raise AuthError(f"Invalid HS256 token: {exc}") from exc
-
-    # ES256 / RS256: asymmetric path. Resolve the public key via JWKS.
-    client = _jwks_client()
-    if client is None:
-        raise AuthError("SUPABASE_URL not set; cannot resolve JWKS")
     try:
-        signing_key = client.get_signing_key_from_jwt(token).key
+        signing_key = _jwks_client().get_signing_key_from_jwt(token).key
         return jwt.decode(
             token,
             signing_key,
@@ -90,7 +68,7 @@ def _decode_token(token: str) -> dict:
     except jwt.ExpiredSignatureError as exc:
         raise AuthError("Token expired") from exc
     except jwt.InvalidTokenError as exc:
-        raise AuthError(f"Invalid {alg} token: {exc}") from exc
+        raise AuthError(f"Invalid token: {exc}") from exc
     except Exception as exc:
         raise AuthError(f"JWKS verification failed: {exc}") from exc
 
