@@ -9,14 +9,13 @@ import {
   View,
 } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import {
-  GoogleSigninButton,
-} from '@react-native-google-signin/google-signin';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, ArrowRight } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { GoogleLogo } from '@/components/auth/GoogleLogo';
+import { Colors } from '@/lib/colors';
 import {
   signInWithEmail,
   signUpWithEmail,
@@ -25,7 +24,50 @@ import { signInWithApple, signInWithGoogle } from '@/lib/social-auth';
 
 type Mode = 'choose' | 'email-signin' | 'email-signup';
 
-const SOCIAL_BUTTON_HEIGHT = 48;
+const SOCIAL_BUTTON_HEIGHT = 52;
+const SOCIAL_CORNER_RADIUS = 12;
+
+function GoogleSignInButton({
+  onPress,
+  loading,
+}: {
+  onPress: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      accessibilityRole="button"
+      accessibilityLabel="Mit Google anmelden"
+      style={({ pressed }) => ({
+        height: SOCIAL_BUTTON_HEIGHT,
+        borderRadius: SOCIAL_CORNER_RADIUS,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: Colors.divider,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: loading ? 0.6 : pressed ? 0.85 : 1,
+      })}
+    >
+      <View style={{ marginRight: 10 }}>
+        <GoogleLogo size={20} />
+      </View>
+      <Text
+        style={{
+          color: '#1F1F1F',
+          fontSize: 16,
+          fontWeight: '600',
+          letterSpacing: 0.1,
+        }}
+      >
+        Mit Google anmelden
+      </Text>
+    </Pressable>
+  );
+}
 
 function ErrorBox({ message }: { message: string }) {
   return (
@@ -132,7 +174,7 @@ export default function LoginScreen() {
                     buttonStyle={
                       AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
                     }
-                    cornerRadius={12}
+                    cornerRadius={SOCIAL_CORNER_RADIUS}
                     style={{
                       width: '100%',
                       height: SOCIAL_BUTTON_HEIGHT,
@@ -144,20 +186,10 @@ export default function LoginScreen() {
                   />
                 )}
 
-                <View className="items-center" style={{ height: SOCIAL_BUTTON_HEIGHT }}>
-                  <GoogleSigninButton
-                    size={GoogleSigninButton.Size.Wide}
-                    color={GoogleSigninButton.Color.Light}
-                    onPress={() =>
-                      runProvider(signInWithGoogle, 'Google-Anmeldung')
-                    }
-                    disabled={loading}
-                    style={{
-                      width: '100%',
-                      height: SOCIAL_BUTTON_HEIGHT,
-                    }}
-                  />
-                </View>
+                <GoogleSignInButton
+                  onPress={() => runProvider(signInWithGoogle, 'Google-Anmeldung')}
+                  loading={loading}
+                />
 
                 <View className="flex-row items-center my-1 gap-3">
                   <View className="flex-1 h-px bg-divider" />
