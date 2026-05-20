@@ -19,7 +19,7 @@ from typing import Any
 
 import litellm
 
-from . import garmin
+from . import garmin, profile
 from .config import settings
 from .schemas import ChatMessage
 from .tools import TOOL_SCHEMAS, dispatch
@@ -48,6 +48,17 @@ Wenn search_activities oder get_daily_metrics leere Listen liefern: Roman hat
 entweder Garmin noch nicht verbunden oder noch nicht synct. Sag ihm das er
 in den Einstellungen Garmin verbinden und dann Sync starten soll.
 
+Athlete-Profile-Tools:
+- read_athlete_profile: Du brauchst das normalerweise NICHT, das Profil ist
+  unten im Prompt schon eingebettet. Nur wenn du explizit die leeren
+  Sections sehen willst.
+- update_athlete_section: Schreibt eine Section neu. Nutze das wenn Roman
+  dir etwas DAUERHAFTES erzaehlt - ein Ziel, eine Verletzung, ein Lebens-
+  Constraint, eine Coaching-Praeferenz. Nicht jede Trainings-Beobachtung
+  speichern, nur was ueber diese Unterhaltung hinaus zaehlt. Overwrite-
+  not-append: wenn die Section schon Inhalt hat, merge ihn mit dem neuen
+  Stuff im einen Update-Call, nicht zwei Updates hintereinander.
+
 Stil:
 - Keine Emojis ausser Roman benutzt sie zuerst.
 - Keine Bullet-Listen wenn 1-2 Saetze reichen.
@@ -74,17 +85,32 @@ def _sanitize(text: str) -> str:
 
 
 def _system_prompt() -> str:
+    parts: list[str] = [BASE_SYSTEM_PROMPT]
+
     status = garmin.get_status()
     if status["connected"]:
-        suffix = (
-            f"\n\nGarmin-Status: verbunden als {status['display_name']}. "
+        parts.append(
+            f"Garmin-Status: verbunden als {status['display_name']}. "
             f"Aktivitaeten in DB: {status['activity_count']}. "
             f"Letzte Aktivitaet: {status.get('latest_activity_date') or 'unbekannt'}. "
             f"Letzter Sync: {status.get('last_sync_at') or 'noch nie'}."
         )
     else:
-        suffix = "\n\nGarmin-Status: NICHT verbunden. Roman muss erst in den Einstellungen verbinden."
-    return BASE_SYSTEM_PROMPT + suffix
+        parts.append(
+            "Garmin-Status: NICHT verbunden. Roman muss erst in den Einstellungen verbinden."
+        )
+
+    narrative = profile.narrate_profile()
+    if narrative:
+        parts.append("Athlete-Profil (das ist alles was du dauerhaft ueber Roman weisst):\n" + narrative)
+    else:
+        parts.append(
+            "Athlete-Profil: leer. Du kennst Roman noch nicht. Frag organisch nach "
+            "Zielen, Vorlieben, Constraints, und speichere wichtiges per "
+            "update_athlete_section ab. Nicht alles auf einmal abfragen."
+        )
+
+    return "\n\n".join(parts)
 
 
 def _to_litellm_messages(messages: list[ChatMessage]) -> list[dict[str, Any]]:
@@ -226,6 +252,10 @@ def _preview(result: dict[str, Any]) -> str:
         return f"{result.get('returned', len(result['activities']))} activities"
     if "metrics" in result:
         return f"{result.get('returned', len(result['metrics']))} days of metrics"
+    if "sections" in result and "non_empty_sections" in result:
+        return f"{len(result['non_empty_sections'])} sections filled"
+    if "section" in result and result.get("status") == "ok":
+        return f"updated {result['section']} ({result['stored_chars']} chars)"
     if "current" in result and "previous" in result:
         cur = result["current"]
         return (

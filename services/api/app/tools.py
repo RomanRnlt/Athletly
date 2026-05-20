@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
-from . import db
+from . import db, profile
 
 logger = logging.getLogger(__name__)
 
@@ -250,11 +250,35 @@ def get_weekly_load() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def read_athlete_profile() -> dict[str, Any]:
+    sections = profile.read_sections()
+    non_empty = {k: v for k, v in sections.items() if v.strip()}
+    return {
+        "sections": sections,
+        "non_empty_sections": list(non_empty.keys()),
+        "is_empty": len(non_empty) == 0,
+    }
+
+
+def update_athlete_section(section: str, content: str) -> dict[str, Any]:
+    try:
+        updated = profile.update_section(section, content)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    return {
+        "status": "ok",
+        "section": section,
+        "stored_chars": len(updated[section]),
+    }
+
+
 TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
     "search_activities": search_activities,
     "get_activity_details": get_activity_details,
     "get_daily_metrics": get_daily_metrics,
     "get_weekly_load": get_weekly_load,
+    "read_athlete_profile": read_athlete_profile,
+    "update_athlete_section": update_athlete_section,
 }
 
 
@@ -326,6 +350,58 @@ TOOL_SCHEMAS = [
                         "description": "Number of days back from today (default 7, cap 90).",
                     },
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_athlete_profile",
+            "description": (
+                "Read the current AthleteProfile (markdown file Roman can also edit "
+                "directly). Returns the parsed sections and which ones are empty. "
+                "Call this when you need context Roman has told you about himself "
+                "in past conversations: his goals, his life constraints, his "
+                "training history, his preferences. The profile is ALWAYS injected "
+                "into the system prompt non-empty, so usually you do NOT need to "
+                "call this - only call when you suspect Roman has edited the file "
+                "manually or you need the empty-section list to know what is still "
+                "missing."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_athlete_section",
+            "description": (
+                "Overwrite one section of the AthleteProfile with new prose. Use "
+                "when Roman tells you something durable about himself that should "
+                "outlive the current conversation: a goal, a life constraint, an "
+                "injury, a preference for how you talk to him, an experience. "
+                "Overwrite-not-append: the new content REPLACES the section, "
+                "merge with what's already there if you want to keep older lines. "
+                "Section MUST be one of the exact strings: 'Warum ich trainiere', "
+                "'Sportarten & Rollen', 'Nicht verhandelbar (Leben & Kontext)', "
+                "'Wie ich auf Belastung reagiere', 'Geschichte & Erfahrung', "
+                "'Coaching-Stil & Praeferenzen'. Do NOT log every chat fact - only "
+                "things that matter beyond this conversation."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "description": "Exact section name from the closed skeleton.",
+                        "enum": list(profile.SECTIONS),
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "New full content for the section. Replaces what was there. Keep tight, max ~2000 chars.",
+                    },
+                },
+                "required": ["section", "content"],
             },
         },
     },
