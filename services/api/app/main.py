@@ -117,6 +117,26 @@ async def get_profile() -> ProfileResponse:
     return ProfileResponse(sections=dtos, is_empty=all(d.empty for d in dtos))
 
 
+# ---------------------------------------------------------------------------
+# Account-level reset (wipe profile + synced data + garmin tokens)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/account/reset")
+async def account_reset() -> dict[str, str]:
+    """Wipe everything user-scoped except the account itself.
+
+    Deletes the Garmin token file, truncates SQLite (activities,
+    health_daily_metrics, sync_state), and resets athlete.md back to
+    the empty section skeleton. Idempotent: safe to call when nothing
+    is connected or synced yet.
+    """
+    garmin.disconnect(wipe_data=True)
+    profile.reset()
+    log.info("Account reset: tokens, db, profile wiped")
+    return {"status": "reset"}
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     try:

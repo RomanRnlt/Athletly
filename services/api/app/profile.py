@@ -121,6 +121,17 @@ def update_section(section: str, content: str) -> dict[str, str]:
     return sections
 
 
+def reset() -> None:
+    """Erase the athlete.md content back to the empty section skeleton.
+
+    Used by the account-reset flow: profile is wiped but the file shape
+    (six section headings) is restored so the next chat turn sees a
+    consistent skeleton, not a missing file.
+    """
+    PROFILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PROFILE_PATH.write_text(_empty_skeleton(), encoding="utf-8")
+
+
 def narrate_profile() -> str:
     """Render only non-empty sections for prompt injection.
 

@@ -11,6 +11,7 @@ import {
   LogOut,
   Moon,
   RefreshCw,
+  RotateCcw,
   Sparkles,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +22,7 @@ import { ServiceStatus } from '@/components/profile/ServiceStatus';
 import { SettingsRow } from '@/components/profile/SettingsRow';
 import { GarminConnectModal } from '@/components/profile/GarminConnectModal';
 import { useGarmin } from '@/lib/use-garmin';
+import { apiPost, ApiError } from '@/lib/api';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -70,6 +72,31 @@ export default function SettingsScreen() {
       [
         { text: 'Abbrechen', style: 'cancel' },
         { text: 'Trennen', style: 'destructive', onPress: disconnect },
+      ],
+    );
+  };
+
+  const performReset = async () => {
+    try {
+      await apiPost<{ status: string }>('/account/reset', {});
+      await refresh();
+      Alert.alert(
+        'Zurueckgesetzt',
+        'Athlete-Profil, Garmin-Daten und Verbindung wurden geloescht.',
+      );
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Reset fehlgeschlagen';
+      Alert.alert('Reset fehlgeschlagen', message);
+    }
+  };
+
+  const handleReset = () => {
+    Alert.alert(
+      'Alle Daten zuruecksetzen?',
+      'Dies loescht dein Athlete-Profil, alle synchronisierten Garmin-Daten und die Garmin-Verbindung. Deine Anmeldung bleibt erhalten.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        { text: 'Zuruecksetzen', style: 'destructive', onPress: performReset },
       ],
     );
   };
@@ -159,6 +186,12 @@ export default function SettingsScreen() {
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow icon={Lock} label="Datenschutz" onPress={() => {}} />
             <SettingsRow icon={HelpCircle} label="Hilfe & Support" onPress={() => {}} />
+            <SettingsRow
+              icon={RotateCcw}
+              label="Alle Daten zuruecksetzen"
+              onPress={handleReset}
+              isDestructive
+            />
             <SettingsRow icon={LogOut} label="Abmelden" onPress={() => {}} isDestructive isLast />
           </Card>
         </View>
