@@ -281,6 +281,8 @@ def _preview(result: dict[str, Any]) -> str:
         return f"{len(result['non_empty_sections'])} sections filled"
     if "section" in result and result.get("status") == "ok":
         return f"updated {result['section']} ({result['stored_chars']} chars)"
+    if "query" in result and "results" in result:
+        return f"{result.get('returned', 0)} web hits for {result['query']!r}"
     if "current" in result and "previous" in result:
         cur = result["current"]
         return (

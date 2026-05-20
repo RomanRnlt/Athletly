@@ -21,6 +21,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_activity_details: 'Schaut sich einen Workout genauer an',
   get_daily_metrics: 'Liest deine Gesundheitsdaten',
   get_weekly_load: 'Berechnet dein Wochenvolumen',
+  web_search: 'Recherchiert im Web',
 };
 
 function makeId(prefix: string): string {
