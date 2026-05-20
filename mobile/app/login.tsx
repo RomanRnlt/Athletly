@@ -27,6 +27,27 @@ type Mode = 'choose' | 'email-signin' | 'email-signup';
 const SOCIAL_BUTTON_HEIGHT = 52;
 const SOCIAL_CORNER_RADIUS = 12;
 
+const googleButtonStyles = {
+  container: {
+    width: '100%' as const,
+    height: SOCIAL_BUTTON_HEIGHT,
+    borderRadius: SOCIAL_CORNER_RADIUS,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  label: {
+    color: '#1F1F1F',
+    fontSize: 17,
+    fontWeight: '600' as const,
+    letterSpacing: 0.1,
+    marginLeft: 8,
+  },
+};
+
 function GoogleSignInButton({
   onPress,
   loading,
@@ -40,31 +61,10 @@ function GoogleSignInButton({
       disabled={loading}
       accessibilityRole="button"
       accessibilityLabel="Mit Google anmelden"
-      style={({ pressed }) => ({
-        height: SOCIAL_BUTTON_HEIGHT,
-        borderRadius: SOCIAL_CORNER_RADIUS,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: Colors.divider,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: loading ? 0.6 : pressed ? 0.85 : 1,
-      })}
+      style={[googleButtonStyles.container, { opacity: loading ? 0.6 : 1 }]}
     >
-      <View style={{ marginRight: 10 }}>
-        <GoogleLogo size={20} />
-      </View>
-      <Text
-        style={{
-          color: '#1F1F1F',
-          fontSize: 16,
-          fontWeight: '600',
-          letterSpacing: 0.1,
-        }}
-      >
-        Mit Google anmelden
-      </Text>
+      <GoogleLogo size={20} />
+      <Text style={googleButtonStyles.label}>Mit Google anmelden</Text>
     </Pressable>
   );
 }
