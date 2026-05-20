@@ -35,9 +35,17 @@ npx expo start
 
 Press `i` for iOS Simulator, scan the QR with Expo Go on a real device, or `w` for web.
 
-For real-device testing, set `EXPO_PUBLIC_API_URL` to your Mac's LAN IP in
-`mobile/.env` (e.g. `http://192.168.1.42:8000`). Simulator works with the
-default `http://localhost:8000`.
+The mobile app auto-discovers the backend URL from Expo's Metro host, so it
+works on simulator AND real device on the same Wifi with zero config (port
+8000 on the same machine that runs `expo start`). The backend binds to
+`0.0.0.0` by default so the device can reach it.
+
+Override only when needed (tunnel mode, deployed backend, web in a browser):
+
+```
+# mobile/.env
+EXPO_PUBLIC_API_URL=https://athletly-api.fly.dev
+```
 
 ## Switching LLM models
 

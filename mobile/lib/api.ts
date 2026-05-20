@@ -1,11 +1,34 @@
+import Constants from 'expo-constants';
 import EventSource from 'react-native-sse';
 import type { ChatMessage } from '@/types/chat';
 
-const DEFAULT_BASE_URL = 'http://localhost:8000';
+const API_PORT = 8000;
+const LOCALHOST_FALLBACK = `http://localhost:${API_PORT}`;
 
+/**
+ * Derive the API base URL.
+ *
+ * Priority:
+ *   1. EXPO_PUBLIC_API_URL (explicit override, e.g. for prod or tunnels)
+ *   2. Expo's Metro host (works for both simulator and real device on LAN
+ *      because Expo already exposes the Mac's reachable IP there)
+ *   3. localhost (web / last resort)
+ */
 export function getApiBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
-  return fromEnv && fromEnv.length > 0 ? fromEnv : DEFAULT_BASE_URL;
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    // Older Expo manifest shape, kept as fallback.
+    (Constants as unknown as { manifest?: { hostUri?: string } }).manifest?.hostUri;
+
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host && host.length > 0) return `http://${host}:${API_PORT}`;
+  }
+
+  return LOCALHOST_FALLBACK;
 }
 
 interface StreamHandlers {
