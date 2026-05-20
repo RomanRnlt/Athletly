@@ -84,10 +84,10 @@ def _sanitize(text: str) -> str:
     return text.replace("—", "-").replace("–", "-")
 
 
-def _system_prompt() -> str:
+def _system_prompt(account_id: str) -> str:
     parts: list[str] = [BASE_SYSTEM_PROMPT]
 
-    status = garmin.get_status()
+    status = garmin.get_status(account_id)
     if status["connected"]:
         parts.append(
             f"Garmin-Status: verbunden als {status['display_name']}. "
@@ -100,7 +100,7 @@ def _system_prompt() -> str:
             "Garmin-Status: NICHT verbunden. Roman muss erst in den Einstellungen verbinden."
         )
 
-    narrative = profile.narrate_profile()
+    narrative = profile.narrate_profile(account_id)
     if narrative:
         parts.append("Athlete-Profil (das ist alles was du dauerhaft ueber Roman weisst):\n" + narrative)
     else:
@@ -113,14 +113,15 @@ def _system_prompt() -> str:
     return "\n\n".join(parts)
 
 
-def _to_litellm_messages(messages: list[ChatMessage]) -> list[dict[str, Any]]:
-    history: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt()}]
+def _to_litellm_messages(account_id: str, messages: list[ChatMessage]) -> list[dict[str, Any]]:
+    history: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt(account_id)}]
     for m in messages:
         history.append({"role": m.role, "content": m.content})
     return history
 
 
 async def stream_chat(
+    account_id: str,
     messages: list[ChatMessage],
     model: str | None = None,
 ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
@@ -130,7 +131,7 @@ async def stream_chat(
     The 'done' event is NOT emitted here; the FastAPI handler appends it.
     """
     chosen_model = model or settings.chat_model
-    history = _to_litellm_messages(messages)
+    history = _to_litellm_messages(account_id, messages)
 
     for turn in range(MAX_TOOL_TURNS):
         try:
@@ -223,7 +224,7 @@ async def stream_chat(
 
             yield ("tool_call", {"name": name, "args": args})
 
-            result = await asyncio.to_thread(dispatch, name, args)
+            result = await asyncio.to_thread(dispatch, account_id, name, args)
             preview = _preview(result)
             yield ("tool_result", {"name": name, "preview": preview})
 
@@ -269,12 +270,13 @@ def _preview(result: dict[str, Any]) -> str:
 
 
 async def complete_chat(
+    account_id: str,
     messages: list[ChatMessage],
     model: str | None = None,
 ) -> tuple[str, str]:
     """Non-streaming variant. No tool calling here, kept for /chat endpoint."""
     chosen_model = model or settings.chat_model
-    history = _to_litellm_messages(messages)
+    history = _to_litellm_messages(account_id, messages)
     response = await litellm.acompletion(
         model=chosen_model,
         messages=history,

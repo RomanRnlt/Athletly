@@ -1,13 +1,9 @@
 """Garmin Connect integration.
 
-Single-user MVP: persists Garth tokens in a JSON file on disk, restores a
-logged-in client on demand, syncs activities + daily metrics into SQLite
-via the helpers in ``app.db``.
-
-MFA is supported via the two-step ``connect`` / ``connect_mfa`` flow.
-Partially-authenticated Garmin instances are kept in a module-level dict
-keyed by a short-lived state_id while the UI prompts the user for the
-6-digit code.
+Tokens stored in the garmin_tokens table (one row per account_id), sync
+results written to activities + health_daily_metrics, also scoped by
+account_id. MFA is handled via a short-lived in-memory dict of partially
+authenticated Garmin clients keyed by random state_id.
 """
 
 from __future__ import annotations
@@ -19,18 +15,17 @@ import secrets
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
 
 from garminconnect import Garmin
 
 from . import db
+from .supabase_client import get_service_client
 
 logger = logging.getLogger(__name__)
 
-TOKENS_PATH = db.DATA_DIR / "garmin_tokens.json"
 MFA_TTL_SECONDS = 300
-_pending_mfa: dict[str, tuple[float, Garmin]] = {}
+_pending_mfa: dict[str, tuple[float, str, Garmin]] = {}
 
 
 @dataclass
@@ -42,53 +37,62 @@ class ConnectResult:
 
 
 # ---------------------------------------------------------------------------
-# Token persistence
+# Token persistence (Supabase)
 # ---------------------------------------------------------------------------
 
 
-def _save_tokens(client_dump: str, email: str, display_name: str) -> None:
-    TOKENS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "tokens": client_dump,
-        "email": email,
-        "display_name": display_name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    TOKENS_PATH.write_text(json.dumps(payload))
+def _save_tokens(account_id: str, client_dump: str, email: str, display_name: str) -> None:
+    sb = get_service_client()
+    sb.table("garmin_tokens").upsert(
+        {
+            "account_id": account_id,
+            "tokens_json": client_dump,
+            "email": email,
+            "display_name": display_name,
+            "connected_since": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="account_id",
+    ).execute()
 
 
-def _load_tokens() -> dict[str, Any] | None:
-    if not TOKENS_PATH.exists():
+def _load_tokens(account_id: str) -> dict[str, Any] | None:
+    sb = get_service_client()
+    res = (
+        sb.table("garmin_tokens")
+        .select("tokens_json, email, display_name, connected_since")
+        .eq("account_id", account_id)
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
         return None
-    try:
-        return json.loads(TOKENS_PATH.read_text())
-    except Exception:
-        logger.exception("Failed to read garmin_tokens.json")
-        return None
+    return rows[0]
 
 
-def is_connected() -> bool:
-    return _load_tokens() is not None
+def is_connected(account_id: str) -> bool:
+    return _load_tokens(account_id) is not None
 
 
-def get_status() -> dict[str, Any]:
-    tokens = _load_tokens()
+def get_status(account_id: str) -> dict[str, Any]:
+    tokens = _load_tokens(account_id)
     return {
         "connected": tokens is not None,
         "display_name": tokens.get("display_name") if tokens else None,
         "email": tokens.get("email") if tokens else None,
-        "connected_since": tokens.get("created_at") if tokens else None,
-        "last_sync_at": db.get_sync_state("last_sync_at"),
-        "activity_count": db.count_activities(),
-        "latest_activity_date": db.latest_activity_date(),
+        "connected_since": tokens.get("connected_since") if tokens else None,
+        "last_sync_at": db.get_sync_state(account_id, "last_sync_at"),
+        "activity_count": db.count_activities(account_id),
+        "latest_activity_date": db.latest_activity_date(account_id),
     }
 
 
-def disconnect(wipe_data: bool = True) -> None:
-    if TOKENS_PATH.exists():
-        TOKENS_PATH.unlink()
+def disconnect(account_id: str, wipe_data: bool = True) -> None:
+    sb = get_service_client()
+    sb.table("garmin_tokens").delete().eq("account_id", account_id).execute()
     if wipe_data:
-        db.truncate_all()
+        for table in ("activities", "health_daily_metrics", "sync_state"):
+            sb.table(table).delete().eq("account_id", account_id).execute()
 
 
 # ---------------------------------------------------------------------------
@@ -98,16 +102,15 @@ def disconnect(wipe_data: bool = True) -> None:
 
 def _prune_pending_mfa() -> None:
     now = time.time()
-    expired = [k for k, (ts, _) in _pending_mfa.items() if now - ts > MFA_TTL_SECONDS]
+    expired = [k for k, (ts, _, _) in _pending_mfa.items() if now - ts > MFA_TTL_SECONDS]
     for k in expired:
         _pending_mfa.pop(k, None)
 
 
-def _finalize(garmin: Garmin, email: str) -> ConnectResult:
+def _finalize(account_id: str, garmin: Garmin, email: str) -> ConnectResult:
     token_str = garmin.client.dumps()
     display_name = garmin.display_name or garmin.full_name or email
-    _save_tokens(token_str, email, display_name)
-    db.set_sync_state("display_name", display_name)
+    _save_tokens(account_id, token_str, email, display_name)
     return ConnectResult(status="connected", display_name=display_name)
 
 
@@ -117,42 +120,42 @@ def _login_sync(email: str, password: str) -> tuple[str | None, Garmin]:
     return mfa_status, garmin
 
 
-async def connect(email: str, password: str) -> ConnectResult:
+async def connect(account_id: str, email: str, password: str) -> ConnectResult:
     _prune_pending_mfa()
     try:
         mfa_status, garmin = await asyncio.to_thread(_login_sync, email, password)
     except Exception as exc:
-        logger.warning("Garmin login failed for %s: %s", email, exc)
+        logger.warning("Garmin login failed for account %s: %s", account_id, exc)
         return ConnectResult(status="error", error=str(exc))
 
     if mfa_status == "needs_mfa":
         state_id = secrets.token_urlsafe(16)
-        _pending_mfa[state_id] = (time.time(), garmin)
-        # Garmin instance carries the partial-auth state internally.
-        # We just keep the live instance until the user supplies the code.
+        _pending_mfa[state_id] = (time.time(), account_id, garmin)
         garmin._pending_email = email  # type: ignore[attr-defined]
         return ConnectResult(status="needs_mfa", state_id=state_id)
 
-    return _finalize(garmin, email)
+    return _finalize(account_id, garmin, email)
 
 
 def _resume_sync(garmin: Garmin, code: str) -> None:
     garmin.resume_login({}, code)
 
 
-async def connect_mfa(state_id: str, code: str) -> ConnectResult:
+async def connect_mfa(account_id: str, state_id: str, code: str) -> ConnectResult:
     _prune_pending_mfa()
     entry = _pending_mfa.pop(state_id, None)
     if not entry:
         return ConnectResult(status="error", error="MFA session expired. Bitte neu starten.")
-    _, garmin = entry
+    _, expected_account, garmin = entry
+    if expected_account != account_id:
+        return ConnectResult(status="error", error="MFA session belongs to a different account")
     email = getattr(garmin, "_pending_email", garmin.username)
     try:
         await asyncio.to_thread(_resume_sync, garmin, code)
     except Exception as exc:
         logger.warning("Garmin MFA verification failed: %s", exc)
         return ConnectResult(status="error", error=str(exc))
-    return _finalize(garmin, email)
+    return _finalize(account_id, garmin, email)
 
 
 # ---------------------------------------------------------------------------
@@ -160,17 +163,17 @@ async def connect_mfa(state_id: str, code: str) -> ConnectResult:
 # ---------------------------------------------------------------------------
 
 
-def _restore_sync() -> Garmin:
-    tokens = _load_tokens()
+def _restore_sync(account_id: str) -> Garmin:
+    tokens = _load_tokens(account_id)
     if not tokens:
         raise RuntimeError("Garmin not connected")
     garmin = Garmin()
-    garmin.login(tokenstore=tokens["tokens"])
+    garmin.login(tokenstore=tokens["tokens_json"])
     return garmin
 
 
-async def _restore() -> Garmin:
-    return await asyncio.to_thread(_restore_sync)
+async def _restore(account_id: str) -> Garmin:
+    return await asyncio.to_thread(_restore_sync, account_id)
 
 
 def _avg_pace_min_km(avg_speed_mps: float | None) -> float | None:
@@ -186,7 +189,7 @@ def _to_int(val: Any) -> int | None:
         return None
 
 
-def _sync_activities_sync(garmin: Garmin, days: int) -> int:
+def _sync_activities_sync(account_id: str, garmin: Garmin, days: int) -> int:
     end = datetime.now(timezone.utc).date()
     start = end - timedelta(days=days)
     activities = garmin.get_activities_by_date(start.isoformat(), end.isoformat())
@@ -209,19 +212,19 @@ def _sync_activities_sync(garmin: Garmin, days: int) -> int:
             "vo2max_activity": act.get("vO2MaxValue"),
             "avg_pace_min_km": _avg_pace_min_km(act.get("averageSpeed")),
             "elevation_gain_m": act.get("elevationGain"),
-            "raw_data": json.dumps(act),
+            "raw_data": act,
         }
-        db.upsert_activity(row)
+        db.upsert_activity(account_id, row)
         synced += 1
     return synced
 
 
-def _sync_daily_metrics_sync(garmin: Garmin, days: int) -> int:
+def _sync_daily_metrics_sync(account_id: str, garmin: Garmin, days: int) -> int:
     today = datetime.now(timezone.utc).date()
     synced = 0
     for offset in range(days):
         day = (today - timedelta(days=offset)).isoformat()
-        row: dict[str, Any] = {"date": day, "raw_data": None}
+        row: dict[str, Any] = {"date": day}
         wrote_any = False
 
         try:
@@ -295,17 +298,17 @@ def _sync_daily_metrics_sync(garmin: Garmin, days: int) -> int:
             logger.debug("get_sleep_data failed for %s", day, exc_info=True)
 
         if wrote_any:
-            db.upsert_daily_metric(row)
+            db.upsert_daily_metric(account_id, row)
             synced += 1
     return synced
 
 
-async def sync_all(days: int = 365) -> dict[str, Any]:
-    garmin = await _restore()
-    activities = await asyncio.to_thread(_sync_activities_sync, garmin, days)
-    metrics = await asyncio.to_thread(_sync_daily_metrics_sync, garmin, days)
+async def sync_all(account_id: str, days: int = 365) -> dict[str, Any]:
+    garmin = await _restore(account_id)
+    activities = await asyncio.to_thread(_sync_activities_sync, account_id, garmin, days)
+    metrics = await asyncio.to_thread(_sync_daily_metrics_sync, account_id, garmin, days)
     now_iso = datetime.now(timezone.utc).isoformat()
-    db.set_sync_state("last_sync_at", now_iso)
+    db.set_sync_state(account_id, "last_sync_at", now_iso)
     return {
         "activities_synced": activities,
         "daily_metrics_synced": metrics,
