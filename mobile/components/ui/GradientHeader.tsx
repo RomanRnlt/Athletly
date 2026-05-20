@@ -7,11 +7,18 @@ import type { ReactNode } from 'react';
 interface GradientHeaderProps {
   title?: string;
   subtitle?: string;
+  leftContent?: ReactNode;
   rightContent?: ReactNode;
   children?: ReactNode;
 }
 
-export function GradientHeader({ title, subtitle, rightContent, children }: GradientHeaderProps) {
+export function GradientHeader({
+  title,
+  subtitle,
+  leftContent,
+  rightContent,
+  children,
+}: GradientHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -24,6 +31,7 @@ export function GradientHeader({ title, subtitle, rightContent, children }: Grad
       >
         <View className="px-4 pt-2 pb-4">
           <View className="flex-row items-start justify-between">
+            {leftContent && <View className="mr-2 mt-1">{leftContent}</View>}
             <View className="flex-1">
               {title && (
                 <Text className="text-white text-[26px] font-bold" style={{ letterSpacing: -0.3 }}>

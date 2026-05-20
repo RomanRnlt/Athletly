@@ -69,3 +69,14 @@ class GarminSyncResponse(BaseModel):
     daily_metrics_synced: int
     days: int
     last_sync_at: str
+
+
+class ProfileSectionDTO(BaseModel):
+    name: str
+    content: str
+    empty: bool
+
+
+class ProfileResponse(BaseModel):
+    sections: list[ProfileSectionDTO]
+    is_empty: bool

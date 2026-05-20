@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
   Activity,
   Bell,
@@ -10,6 +11,7 @@ import {
   LogOut,
   Moon,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -42,6 +44,7 @@ function formatRelative(iso: string | null): string | null {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { status, isSyncing, error, refresh, sync, disconnect } = useGarmin();
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -87,6 +90,17 @@ export default function SettingsScreen() {
             <Text className="text-error text-xs">{error}</Text>
           </View>
         )}
+
+        <View className="mx-4 mt-2">
+          <Card variant="standard" className="p-0 overflow-hidden">
+            <SettingsRow
+              icon={Sparkles}
+              label="Wie Athletly dich sieht"
+              onPress={() => router.push('/athlete-profile')}
+              isLast
+            />
+          </Card>
+        </View>
 
         <SectionTitle>Verbundene Dienste</SectionTitle>
         <View className="mx-4">

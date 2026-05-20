@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from . import db, garmin
+from . import db, garmin, profile
 from .agent import complete_chat, stream_chat
 from .config import settings
 from .schemas import (
@@ -22,6 +22,8 @@ from .schemas import (
     GarminSyncRequest,
     GarminSyncResponse,
     HealthResponse,
+    ProfileResponse,
+    ProfileSectionDTO,
 )
 
 logging.basicConfig(level=settings.log_level.upper())
@@ -98,6 +100,21 @@ async def garmin_sync(req: GarminSyncRequest | None = None) -> GarminSyncRespons
 async def garmin_disconnect() -> dict[str, str]:
     garmin.disconnect()
     return {"status": "disconnected"}
+
+
+# ---------------------------------------------------------------------------
+# Athlete profile endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.get("/profile", response_model=ProfileResponse)
+async def get_profile() -> ProfileResponse:
+    sections = profile.read_sections()
+    dtos = [
+        ProfileSectionDTO(name=name, content=content, empty=not content.strip())
+        for name, content in sections.items()
+    ]
+    return ProfileResponse(sections=dtos, is_empty=all(d.empty for d in dtos))
 
 
 @app.post("/chat", response_model=ChatResponse)
