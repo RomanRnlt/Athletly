@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View, Text, ScrollView } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { GradientHeader } from '@/components/ui/GradientHeader';
@@ -139,7 +140,16 @@ function EmptyPlan() {
 }
 
 export default function PlanScreen() {
-  const { weeks, status, hasPlan, isLoading, error } = usePlan();
+  const { weeks, status, hasPlan, isLoading, error, refresh } = usePlan();
+
+  // Refetch whenever the tab gains focus, so a plan just created in the chat
+  // shows up without restarting the app (the screen stays mounted across tab
+  // switches, so the initial-mount fetch alone is not enough).
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
   const subtitle =
     status === 'draft' ? 'Entwurf - im Chat bestaetigen' : 'Dein aktiver Plan';
