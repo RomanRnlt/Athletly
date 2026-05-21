@@ -14,6 +14,7 @@ interface UseChatReturn {
   toolStatus: string | null;
   liveSteps: readonly ToolStep[];
   streamingId: string | null;
+  streamStartedAt: Date | null;
   error: string | null;
   sendMessage: (text: string) => void;
   triggerWelcome: () => void;
@@ -53,6 +54,7 @@ export function useChat({
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [liveSteps, setLiveSteps] = useState<readonly ToolStep[]>([]);
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [streamStartedAt, setStreamStartedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const streamHandleRef = useRef<{ close: () => void } | null>(null);
   const streamingIdRef = useRef<string | null>(null);
@@ -179,6 +181,7 @@ export function useChat({
     setIsStreaming(true);
     setToolStatus(null);
     setLiveSteps([]);
+    setStreamStartedAt(new Date());
   }, []);
 
   const sendMessage = useCallback(
@@ -238,6 +241,7 @@ export function useChat({
     toolStatus,
     liveSteps,
     streamingId,
+    streamStartedAt,
     error,
     sendMessage,
     triggerWelcome,

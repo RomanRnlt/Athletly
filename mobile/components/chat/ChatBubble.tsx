@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Colors } from '@/lib/colors';
-import { ToolGroup } from '@/components/chat/ToolGroup';
+import { LiveActivity } from '@/components/chat/LiveActivity';
 import { ShowWorkFooter } from '@/components/chat/ShowWorkFooter';
 import type { ChatMessage, ToolStep } from '@/types/chat';
 
@@ -9,6 +9,8 @@ interface ChatBubbleProps {
   message: ChatMessage;
   /** Live activity, passed only for the currently-streaming assistant message. */
   liveSteps?: readonly ToolStep[];
+  /** Turn start, for the live elapsed timer. */
+  streamStartedAt?: Date | null;
 }
 
 const BUBBLE_STYLE = {
@@ -38,20 +40,34 @@ function ThinkingPill() {
   );
 }
 
-function AssistantBubble({ message, liveSteps }: { message: ChatMessage; liveSteps?: readonly ToolStep[] }) {
+function AssistantBubble({
+  message,
+  liveSteps,
+  streamStartedAt,
+}: {
+  message: ChatMessage;
+  liveSteps?: readonly ToolStep[];
+  streamStartedAt?: Date | null;
+}) {
   const live = !!liveSteps && liveSteps.length > 0;
   const hasText = message.content.length > 0;
   const footerSteps = live ? undefined : message.toolSteps;
 
   return (
     <View className="self-start max-w-[92%] mb-3">
-      {live ? <ToolGroup steps={liveSteps as readonly ToolStep[]} /> : null}
-
       {hasText ? (
         <View className="rounded-2xl rounded-tl-sm px-4 py-3" style={BUBBLE_STYLE}>
           <Text className="text-text-primary text-base leading-6">{message.content}</Text>
         </View>
-      ) : !live ? (
+      ) : null}
+
+      {/* Current activity goes BELOW the text so far (more text may follow),
+          showing only what the agent is doing now - not a checked history. */}
+      {live ? (
+        <View className={hasText ? 'mt-2' : undefined}>
+          <LiveActivity steps={liveSteps as readonly ToolStep[]} startedAt={streamStartedAt ?? null} />
+        </View>
+      ) : !hasText ? (
         <ThinkingPill />
       ) : null}
 
@@ -85,10 +101,12 @@ function SystemBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-export function ChatBubble({ message, liveSteps }: ChatBubbleProps) {
+export function ChatBubble({ message, liveSteps, streamStartedAt }: ChatBubbleProps) {
   switch (message.role) {
     case 'assistant':
-      return <AssistantBubble message={message} liveSteps={liveSteps} />;
+      return (
+        <AssistantBubble message={message} liveSteps={liveSteps} streamStartedAt={streamStartedAt} />
+      );
     case 'user':
       return <UserBubble message={message} />;
     case 'system':
