@@ -22,6 +22,7 @@ def _normalize_model(raw: str) -> str:
 @dataclass(frozen=True)
 class Settings:
     chat_model: str
+    plan_model: str
     anthropic_api_key: str | None
     gemini_api_key: str | None
     host: str
@@ -44,6 +45,9 @@ def load_settings() -> Settings:
     return Settings(
         chat_model=_normalize_model(
             os.getenv("ATHLETLY_CHAT_MODEL", "anthropic/claude-sonnet-4-5"),
+        ),
+        plan_model=_normalize_model(
+            os.getenv("ATHLETLY_PLAN_MODEL", "anthropic/claude-opus-4-7"),
         ),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY") or None,
         gemini_api_key=os.getenv("GEMINI_API_KEY") or None,

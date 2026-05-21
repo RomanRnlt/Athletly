@@ -282,5 +282,102 @@ def wipe_account(account_id: str) -> None:
     sections rather than deleting the row.
     """
     sb = get_service_client()
-    for table in ("activities", "health_daily_metrics", "sync_state", "garmin_tokens"):
+    for table in (
+        "activities",
+        "health_daily_metrics",
+        "sync_state",
+        "garmin_tokens",
+        "training_plans",
+    ):
         sb.table(table).delete().eq("account_id", account_id).execute()
+
+
+# ---------------------------------------------------------------------------
+# Training plans (jsonb passthrough; no domain logic here by design)
+# ---------------------------------------------------------------------------
+
+
+def insert_plan(
+    account_id: str,
+    plan_data: dict[str, Any],
+    rationale: str | None,
+    status: str = "draft",
+) -> dict[str, Any]:
+    sb = get_service_client()
+    res = (
+        sb.table("training_plans")
+        .insert(
+            {
+                "account_id": account_id,
+                "plan_data": plan_data,
+                "rationale": rationale,
+                "status": status,
+            }
+        )
+        .execute()
+    )
+    return (res.data or [{}])[0]
+
+
+def get_plan_by_status(account_id: str, status: str) -> dict[str, Any] | None:
+    sb = get_service_client()
+    res = (
+        sb.table("training_plans")
+        .select("*")
+        .eq("account_id", account_id)
+        .eq("status", status)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def get_plan_by_id(account_id: str, plan_id: str) -> dict[str, Any] | None:
+    sb = get_service_client()
+    res = (
+        sb.table("training_plans")
+        .select("*")
+        .eq("account_id", account_id)
+        .eq("id", plan_id)
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def update_plan(
+    account_id: str,
+    plan_id: str,
+    *,
+    plan_data: dict[str, Any] | None = None,
+    rationale: str | None = None,
+    status: str | None = None,
+) -> dict[str, Any] | None:
+    payload: dict[str, Any] = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if plan_data is not None:
+        payload["plan_data"] = plan_data
+    if rationale is not None:
+        payload["rationale"] = rationale
+    if status is not None:
+        payload["status"] = status
+    sb = get_service_client()
+    res = (
+        sb.table("training_plans")
+        .update(payload)
+        .eq("account_id", account_id)
+        .eq("id", plan_id)
+        .execute()
+    )
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def archive_plans(account_id: str, statuses: tuple[str, ...]) -> None:
+    sb = get_service_client()
+    for st in statuses:
+        sb.table("training_plans").update({"status": "archived"}).eq(
+            "account_id", account_id
+        ).eq("status", st).execute()

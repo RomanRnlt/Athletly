@@ -135,3 +135,11 @@ class MetricsListResponse(BaseModel):
 class ActivityDetailResponse(BaseModel):
     activity: ActivityDTO
     extras: dict[str, object] = {}
+
+
+class PlanResponse(BaseModel):
+    has_plan: bool
+    status: str | None = None
+    plan_id: str | None = None
+    rationale: str | None = None
+    weeks: list[dict[str, object]] = []

@@ -29,6 +29,7 @@ from .schemas import (
     GarminSyncResponse,
     HealthResponse,
     MetricsListResponse,
+    PlanResponse,
     ProfileResponse,
     ProfileSectionDTO,
 )
@@ -251,6 +252,22 @@ async def get_profile(account_id: AccountId) -> ProfileResponse:
 # ---------------------------------------------------------------------------
 # Account-level reset
 # ---------------------------------------------------------------------------
+
+
+@app.get("/plan", response_model=PlanResponse)
+async def get_plan(account_id: AccountId) -> PlanResponse:
+    row = db.get_plan_by_status(account_id, "active") or db.get_plan_by_status(
+        account_id, "draft"
+    )
+    if not row:
+        return PlanResponse(has_plan=False)
+    return PlanResponse(
+        has_plan=True,
+        status=row["status"],
+        plan_id=row["id"],
+        rationale=row.get("rationale"),
+        weeks=(row.get("plan_data") or {}).get("weeks", []),
+    )
 
 
 @app.post("/account/reset")

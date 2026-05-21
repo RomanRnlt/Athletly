@@ -210,6 +210,107 @@ def mark_onboarding_complete(account_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Plan schema (shared contract; plan_agent reuses these)
+# ---------------------------------------------------------------------------
+
+SESSION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "sport": {"type": "string"},
+        "session_type": {"type": "string"},
+        "intensity": {"type": "string", "enum": ["easy", "moderate", "hard"]},
+        "duration_minutes": {"type": "integer"},
+        "description": {"type": "string"},
+        "muscle_groups": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["sport", "session_type", "intensity", "duration_minutes", "description"],
+}
+
+DAY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "date": {"type": "string", "description": "ISO date YYYY-MM-DD"},
+        "sessions": {"type": "array", "items": SESSION_SCHEMA},
+        "rest_reason": {"type": "string", "description": "Only when sessions is empty"},
+    },
+    "required": ["date", "sessions"],
+}
+
+WEEK_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "week_start": {"type": "string", "description": "Monday, ISO date"},
+        "coach_message": {"type": "string"},
+        "days": {"type": "array", "items": DAY_SCHEMA},
+    },
+    "required": ["week_start", "days"],
+}
+
+PLAN_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "rationale": {"type": "string"},
+        "weeks": {"type": "array", "items": WEEK_SCHEMA},
+    },
+    "required": ["rationale", "weeks"],
+}
+
+
+# ---------------------------------------------------------------------------
+# Plan revision tools (jsonb passthrough; the model decides the edits)
+# ---------------------------------------------------------------------------
+
+
+def get_current_plan(account_id: str) -> dict[str, Any]:
+    from . import db
+
+    row = db.get_plan_by_status(account_id, "draft") or db.get_plan_by_status(
+        account_id, "active"
+    )
+    if not row:
+        return {"has_plan": False}
+    return {
+        "has_plan": True,
+        "plan_id": row["id"],
+        "status": row["status"],
+        "rationale": row.get("rationale"),
+        "weeks": (row.get("plan_data") or {}).get("weeks", []),
+    }
+
+
+def update_plan(
+    account_id: str,
+    weeks: list[dict[str, Any]],
+    rationale: str | None = None,
+) -> dict[str, Any]:
+    from . import db
+
+    row = db.get_plan_by_status(account_id, "draft") or db.get_plan_by_status(
+        account_id, "active"
+    )
+    if not row:
+        return {"error": "Kein Plan zum Bearbeiten vorhanden"}
+    updated = db.update_plan(
+        account_id,
+        row["id"],
+        plan_data={"weeks": weeks},
+        rationale=rationale,
+    )
+    return {"status": "ok", "plan_id": row["id"], "updated": updated is not None}
+
+
+def confirm_plan(account_id: str) -> dict[str, Any]:
+    from . import db
+
+    draft = db.get_plan_by_status(account_id, "draft")
+    if not draft:
+        return {"error": "Kein Entwurf zum Bestaetigen vorhanden"}
+    db.archive_plans(account_id, ("active",))
+    db.update_plan(account_id, draft["id"], status="active")
+    return {"status": "ok", "plan_id": draft["id"], "active": True}
+
+
+# ---------------------------------------------------------------------------
 # Registry + schemas
 # ---------------------------------------------------------------------------
 
@@ -222,6 +323,9 @@ TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
     "read_athlete_profile": read_athlete_profile,
     "update_athlete_section": update_athlete_section,
     "mark_onboarding_complete": mark_onboarding_complete,
+    "get_current_plan": get_current_plan,
+    "update_plan": update_plan,
+    "confirm_plan": confirm_plan,
 }
 
 
@@ -357,7 +461,102 @@ TOOL_SCHEMAS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_training_plan",
+            "description": (
+                "Generate a fresh, science-based 2-week training plan via the plan "
+                "sub-agent (which researches the web and has the draft independently "
+                "evaluated). Use when the user asks for a plan and there is none yet. "
+                "Confirm scope with the user FIRST (it takes a while). Runs autonomously "
+                "and creates a DRAFT the user can then review and adjust with you."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "regenerate_plan",
+            "description": (
+                "Throw away the current draft and generate a brand new 2-week plan "
+                "from scratch. Use only when the user wants a fundamentally different "
+                "plan, not for small tweaks (use update_plan for those)."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_plan",
+            "description": (
+                "Read the current training plan (draft or active) so you can discuss "
+                "or edit it with the user. Returns weeks/days/sessions + rationale."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_plan",
+            "description": (
+                "Apply the user's requested changes to the plan. You pass the FULL "
+                "updated weeks array (read it first with get_current_plan, modify what "
+                "the user wants, pass the whole thing back). Use for tweaks like moving "
+                "a session, changing a duration, swapping a sport. Keep the structure valid."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "weeks": {"type": "array", "items": WEEK_SCHEMA},
+                    "rationale": {
+                        "type": "string",
+                        "description": "Optional updated rationale.",
+                    },
+                },
+                "required": ["weeks"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "confirm_plan",
+            "description": (
+                "Confirm the draft plan as the user's active plan once they are happy "
+                "with it. Archives any previous active plan. Call only after the user "
+                "explicitly approves."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Anthropic native web search server tool (shared by chat + plan sub-agents)
+# ---------------------------------------------------------------------------
+
+SERVER_TOOL_NAMES = {"web_search"}
+
+ANTHROPIC_WEB_SEARCH_TOOL: dict[str, Any] = {
+    "type": "web_search_20250305",
+    "name": "web_search",
+    "max_uses": 8,
+}
+
+
+def web_search_tool_for(model: str) -> list[dict[str, Any]]:
+    """Anthropic native web_search server tool, only for Anthropic models."""
+    return [ANTHROPIC_WEB_SEARCH_TOOL] if model.startswith("anthropic/") else []
+
+
+def schemas_for(names: set[str]) -> list[dict[str, Any]]:
+    """Subset of TOOL_SCHEMAS by tool name (for sub-agent tool sets)."""
+    return [t for t in TOOL_SCHEMAS if t["function"]["name"] in names]
 
 
 def dispatch(account_id: str, name: str, args: dict[str, Any]) -> dict[str, Any]:

@@ -19,34 +19,29 @@ from typing import Any
 
 import litellm
 
-from . import garmin, profile, skills
+from . import db, garmin, plan_agent, profile, skills
 from .config import settings
 from .schemas import ChatMessage
-from .tools import TOOL_REGISTRY, TOOL_SCHEMAS, dispatch
+from .tools import (
+    SERVER_TOOL_NAMES,
+    TOOL_REGISTRY,
+    TOOL_SCHEMAS,
+    dispatch,
+    web_search_tool_for,
+)
 
 ONBOARDING_TURN_CAP = 18  # safety net: force-complete onboarding past this
 
-# Anthropic-executed server tools. We don't dispatch them locally (Anthropic
-# runs them inline during a single completion). We just emit UX events when
-# they fire so the mobile chat can show "Recherchiert im Web..." status.
-SERVER_TOOL_NAMES = {"web_search"}
-
-# Anthropic native web search server tool. Added to the tools array only
-# when the chat model is Anthropic. Provider executes the search, returns
-# results inline, no separate API key needed. Cost: ~$10 per 1000 searches.
-ANTHROPIC_WEB_SEARCH_TOOL: dict[str, Any] = {
-    "type": "web_search_20250305",
-    "name": "web_search",
-    "max_uses": 5,
-}
+# Tools whose execution streams progress (run the plan sub-agents) rather than
+# returning a single dict. They are in TOOL_SCHEMAS (the model can call them)
+# but NOT in TOOL_REGISTRY (not plain-dispatched).
+STREAMING_TOOLS = {"generate_training_plan", "regenerate_plan"}
 
 
 def _tools_for_model(chosen_model: str) -> list[dict[str, Any]]:
     """Combine function tools with provider-specific server tools."""
-    tools: list[dict[str, Any]] = list(TOOL_SCHEMAS)
-    if chosen_model.startswith("anthropic/"):
-        tools.append(ANTHROPIC_WEB_SEARCH_TOOL)
-    return tools
+    return list(TOOL_SCHEMAS) + web_search_tool_for(chosen_model)
+
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +77,26 @@ Athlete-Profile-Tools:
   speichern, nur was ueber diese Unterhaltung hinaus zaehlt. Overwrite-
   not-append: wenn die Section schon Inhalt hat, merge ihn mit dem neuen
   Stuff im einen Update-Call, nicht zwei Updates hintereinander.
+
+Trainingsplan:
+- generate_training_plan: Startet den Plan-Agenten der einen wissenschaftlich
+  fundierten 2-Wochen-Plan baut (recherchiert + laesst ihn unabhaengig
+  bewerten). Nutze das wenn Roman einen Plan will und noch keiner existiert.
+  Bestaetige vorher KURZ den Fokus mit ihm (Ziel, Zeitraum), denn es dauert
+  etwas. Danach existiert ein ENTWURF.
+- get_current_plan: Lies den aktuellen Plan (Entwurf oder aktiv) um mit Roman
+  darueber zu reden oder ihn zu bearbeiten.
+- update_plan: Wende Romans gewuenschte Aenderungen an. get_current_plan lesen,
+  die weeks im Kopf anpassen, das ganze weeks-Array zurueckgeben. Fuer kleine
+  Tweaks (Einheit verschieben, Dauer aendern, Sportart tauschen).
+- regenerate_plan: Kompletter Neu-Plan von Null. Nur wenn Roman grundlegend
+  was anderes will, nicht fuer kleine Aenderungen.
+- confirm_plan: Macht den Entwurf zum aktiven Plan. Erst wenn Roman explizit
+  zustimmt.
+
+Plan-Flow: Du legst den Entwurf vor, redest wie ein Coach mit Roman darueber,
+passt per update_plan an bis es passt, dann confirm_plan. Der Plan erscheint
+dann im Plan-Tab.
 
 Stil:
 - Keine Emojis ausser Roman benutzt sie zuerst.
@@ -243,7 +258,7 @@ async def stream_chat(
         function_calls: list[tuple[int, dict[str, str]]] = []
         server_calls: list[dict[str, str]] = []
         for idx, slot in ordered:
-            if slot["name"] in TOOL_REGISTRY:
+            if slot["name"] in TOOL_REGISTRY or slot["name"] in STREAMING_TOOLS:
                 function_calls.append((idx, slot))
             elif slot["name"] in SERVER_TOOL_NAMES:
                 server_calls.append(slot)
@@ -298,7 +313,15 @@ async def stream_chat(
 
             yield ("tool_call", {"name": name, "args": args})
 
-            result = await asyncio.to_thread(dispatch, account_id, name, args)
+            if name in STREAMING_TOOLS:
+                async for event_type, payload in _execute_plan_tool(account_id, name):
+                    if event_type == "__result__":
+                        result = payload
+                    else:
+                        yield (event_type, payload)
+            else:
+                result = await asyncio.to_thread(dispatch, account_id, name, args)
+
             preview = _preview(result)
             yield ("tool_result", {"name": name, "preview": preview})
 
@@ -319,10 +342,66 @@ async def stream_chat(
     )
 
 
+async def _execute_plan_tool(
+    account_id: str, name: str
+) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+    """Run a streaming plan tool (generate/regenerate). Forwards the plan
+    sub-agents' progress events, then yields a final ('__result__', dict)
+    that the caller feeds back to the chat model as the tool result.
+    """
+    if name == "regenerate_plan":
+        await asyncio.to_thread(db.archive_plans, account_id, ("draft",))
+
+    yield ("status", {"label": "Plan-Agent recherchiert und baut deinen Plan"})
+
+    queue: asyncio.Queue[tuple[str, ...]] = asyncio.Queue()
+
+    async def on_event(event_type: str, payload: dict[str, Any]) -> None:
+        await queue.put(("event", event_type, payload))
+
+    async def run() -> None:
+        try:
+            plan = await plan_agent.generate_plan(account_id, on_event)
+        except Exception as exc:
+            logger.exception("plan generation failed")
+            plan = {"error": str(exc)}
+        await queue.put(("done", plan))
+
+    task = asyncio.create_task(run())
+    plan: dict[str, Any] | None = None
+    while True:
+        item = await queue.get()
+        if item[0] == "done":
+            plan = item[1]  # type: ignore[assignment]
+            break
+        _, event_type, payload = item  # type: ignore[misc]
+        yield (event_type, payload)
+    await task
+
+    if not plan or "error" in plan:
+        result = {"error": (plan or {}).get("error", "Plan-Generierung fehlgeschlagen")}
+    else:
+        weeks = plan.get("weeks", [])
+        row = await asyncio.to_thread(
+            db.insert_plan, account_id, {"weeks": weeks}, plan.get("rationale"), "draft"
+        )
+        result = {
+            "status": "plan_created",
+            "plan_id": row.get("id"),
+            "weeks": len(weeks),
+            "rationale": plan.get("rationale"),
+        }
+    yield ("__result__", result)
+
+
 def _preview(result: dict[str, Any]) -> str:
     """Short human-readable summary of a tool result for SSE clients."""
     if "error" in result:
         return f"error: {result['error']}"
+    if result.get("status") == "plan_created":
+        return f"plan draft created ({result.get('weeks', 0)} weeks)"
+    if "has_plan" in result:
+        return "plan loaded" if result["has_plan"] else "no plan yet"
     if "onboarding_completed" in result:
         return f"onboarding done ({result.get('filled_sections', 0)} sections filled)"
     if "activities" in result:
