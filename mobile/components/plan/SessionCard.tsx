@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Clock } from 'lucide-react-native';
+import { Clock, CheckCircle2 } from 'lucide-react-native';
 import { Badge } from '@/components/ui/Badge';
 import { Colors } from '@/lib/colors';
 import { getSportColor } from '@/lib/sport-colors';
@@ -112,7 +112,17 @@ export function SessionCard({ session }: SessionCardProps) {
       <View className="p-4">
         <View className="flex-row items-center justify-between mt-1 mb-2">
           <Badge type="sport" sport={session.sport} label={sportLabel} />
-          <Badge type="intensity" intensity={intentTier} label={intentLabel} />
+          <View className="flex-row items-center gap-2">
+            {session.done ? (
+              <View className="flex-row items-center gap-1">
+                <CheckCircle2 size={14} color={Colors.success} strokeWidth={2.5} />
+                <Text className="text-xs font-semibold" style={{ color: Colors.success }}>
+                  Erledigt
+                </Text>
+              </View>
+            ) : null}
+            <Badge type="intensity" intensity={intentTier} label={intentLabel} />
+          </View>
         </View>
 
         {session.headline ? (

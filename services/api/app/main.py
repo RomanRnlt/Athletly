@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from . import db, garmin, profile
+from . import db, garmin, plan_progress, profile
 from .agent import complete_chat, stream_chat
 from .auth import get_account_id
 from .config import settings
@@ -267,12 +267,22 @@ async def get_plan(account_id: AccountId) -> PlanResponse:
     )
     if not row:
         return PlanResponse(has_plan=False)
+
+    weeks = (row.get("plan_data") or {}).get("weeks", [])
+    # Enrich with real plan-vs-actual progress: match planned sessions against
+    # the athlete's activities in the plan's date range (per day + sport family).
+    date_range = plan_progress.plan_date_range(weeks)
+    if date_range:
+        start, end = date_range
+        activities = db.fetch_activities_between(account_id, start, f"{end}T23:59:59")
+        weeks = plan_progress.enrich_weeks_with_progress(weeks, activities)
+
     return PlanResponse(
         has_plan=True,
         status=row["status"],
         plan_id=row["id"],
         rationale=row.get("rationale"),
-        weeks=(row.get("plan_data") or {}).get("weeks", []),
+        weeks=weeks,
     )
 
 

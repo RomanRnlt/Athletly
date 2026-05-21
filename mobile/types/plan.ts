@@ -66,12 +66,16 @@ export interface PlannedSession {
   readonly groups: readonly Group[];
   /** Derived on the client for week summaries + strip. Approximate. */
   readonly estimatedMinutes: number;
+  /** True when a matching real activity was found on the session's date. */
+  readonly done: boolean;
 }
 
 export interface DayPlan {
   readonly date: string;
   readonly sessions: readonly PlannedSession[];
   readonly rest_reason?: string;
+  /** Plan-vs-actual completion 0..1 (server-computed). null for rest days. */
+  readonly completion: number | null;
 }
 
 export interface WeeklyPlan {

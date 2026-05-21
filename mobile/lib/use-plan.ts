@@ -7,6 +7,7 @@ interface RawDay {
   date: string;
   sessions: unknown[];
   rest_reason?: string;
+  completion?: number | null;
 }
 
 interface RawWeek {
@@ -38,6 +39,7 @@ function mapWeek(w: RawWeek): WeeklyPlan {
     date: d.date,
     sessions: (d.sessions ?? []).map((s, i) => parseSession(s, i, d.date)),
     rest_reason: d.rest_reason,
+    completion: typeof d.completion === 'number' ? d.completion : null,
   }));
   return {
     weekStart: w.week_start,

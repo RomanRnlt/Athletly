@@ -148,5 +148,6 @@ export function parseSession(raw: unknown, idx: number, date: string): PlannedSe
     status: asString(record.status, 'planned'),
     groups,
     estimatedMinutes: estimateSessionMinutes(groups),
+    done: record.done === true,
   };
 }

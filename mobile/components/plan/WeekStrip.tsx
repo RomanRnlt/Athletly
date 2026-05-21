@@ -115,6 +115,9 @@ export function WeekStrip({ weekStart, days, selectedDate, onSelectDate }: WeekS
         const daySessions = dayPlan?.sessions ?? [];
         const isRest = daySessions.length === 0;
         const ringColor = getDayRingColor(daySessions);
+        // Real plan-vs-actual completion (server-computed). Future/undone days
+        // are 0; fully matched days are 100. No more hardcoded progress.
+        const completionPct = Math.round((dayPlan?.completion ?? 0) * 100);
 
         return (
           <Pressable
@@ -136,7 +139,7 @@ export function WeekStrip({ weekStart, days, selectedDate, onSelectDate }: WeekS
 
             <ProgressRing
               size={RING_SIZE}
-              progress={isToday ? 60 : 0}
+              progress={completionPct}
               ringColor={ringColor}
               isRest={isRest}
               sessions={daySessions}
