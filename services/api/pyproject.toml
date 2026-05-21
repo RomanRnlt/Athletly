@@ -15,6 +15,7 @@ dependencies = [
     "garminconnect>=0.2.38",
     "supabase>=2.9.0",
     "pyjwt[crypto]>=2.10.0",
+    "ddgs>=9.0.0",
 ]
 
 [tool.uv]

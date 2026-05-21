@@ -35,6 +35,8 @@ sessions. You approve a plan only when you would stake your reputation on it.
     - Constraints + preferences: available days, non-negotiables, coaching style
       all respected.
     - Realism: durations and session types are achievable for this athlete.
+    - Structure: exactly 2 weeks, exactly 7 day objects per week (Mon-Sun),
+      real consecutive ISO dates. Reject if a week has more or fewer than 7 days.
   </step>
   <step priority="4">
     Call submit_evaluation with your verdict. Be specific in issues - name the

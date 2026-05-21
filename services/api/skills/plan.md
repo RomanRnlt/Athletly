@@ -93,5 +93,7 @@ preferences. Not a generic template.
       }
     ]
   }
-  Two week objects, 7 days each, 14 days total.
+  EXACTLY two week objects, EXACTLY 7 day objects each (Monday through
+  Sunday), 14 days total. Never more, never fewer. A day with no training is
+  still a day object: empty sessions + a rest_reason.
 </output_contract>

@@ -311,6 +311,29 @@ def confirm_plan(account_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Web search (keyless, via ddgs / DuckDuckGo). account_id is unused but kept
+# for the uniform dispatch signature.
+# ---------------------------------------------------------------------------
+
+
+def web_search(account_id: str, query: str, count: int = 5) -> dict[str, Any]:  # noqa: ARG001
+    from ddgs import DDGS
+
+    n = max(1, min(count, 10))
+    try:
+        with DDGS() as ddgs:
+            hits = list(ddgs.text(query, max_results=n))
+    except Exception as exc:
+        return {"error": f"web search failed: {exc}"}
+
+    results = [
+        {"title": h.get("title"), "url": h.get("href"), "snippet": h.get("body")}
+        for h in hits
+    ]
+    return {"query": query, "results": results, "returned": len(results)}
+
+
+# ---------------------------------------------------------------------------
 # Registry + schemas
 # ---------------------------------------------------------------------------
 
@@ -326,6 +349,7 @@ TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
     "get_current_plan": get_current_plan,
     "update_plan": update_plan,
     "confirm_plan": confirm_plan,
+    "web_search": web_search,
 }
 
 
@@ -464,6 +488,25 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "web_search",
+            "description": (
+                "Search the public web for current info you do not already know: "
+                "race events + dates, registration, training methodology, news. "
+                "Returns title + url + snippet for the top results."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query."},
+                    "count": {"type": "integer", "description": "Results 1-10 (default 5)."},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "generate_training_plan",
             "description": (
                 "Generate a fresh, science-based 2-week training plan via the plan "
@@ -536,22 +579,9 @@ TOOL_SCHEMAS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Anthropic native web search server tool (shared by chat + plan sub-agents)
-# ---------------------------------------------------------------------------
-
-SERVER_TOOL_NAMES = {"web_search"}
-
-ANTHROPIC_WEB_SEARCH_TOOL: dict[str, Any] = {
-    "type": "web_search_20250305",
-    "name": "web_search",
-    "max_uses": 8,
-}
-
-
-def web_search_tool_for(model: str) -> list[dict[str, Any]]:
-    """Anthropic native web_search server tool, only for Anthropic models."""
-    return [ANTHROPIC_WEB_SEARCH_TOOL] if model.startswith("anthropic/") else []
+# No provider server tools anymore: web_search is a normal function tool
+# (keyless, via ddgs) so it round-trips cleanly in multi-turn sub-agent loops.
+SERVER_TOOL_NAMES: set[str] = set()
 
 
 def schemas_for(names: set[str]) -> list[dict[str, Any]]:

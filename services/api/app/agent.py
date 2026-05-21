@@ -27,7 +27,6 @@ from .tools import (
     TOOL_REGISTRY,
     TOOL_SCHEMAS,
     dispatch,
-    web_search_tool_for,
 )
 
 ONBOARDING_TURN_CAP = 18  # safety net: force-complete onboarding past this
@@ -38,9 +37,8 @@ ONBOARDING_TURN_CAP = 18  # safety net: force-complete onboarding past this
 STREAMING_TOOLS = {"generate_training_plan", "regenerate_plan"}
 
 
-def _tools_for_model(chosen_model: str) -> list[dict[str, Any]]:
-    """Combine function tools with provider-specific server tools."""
-    return list(TOOL_SCHEMAS) + web_search_tool_for(chosen_model)
+def _tools_for_model(chosen_model: str) -> list[dict[str, Any]]:  # noqa: ARG001
+    return list(TOOL_SCHEMAS)
 
 
 logger = logging.getLogger(__name__)

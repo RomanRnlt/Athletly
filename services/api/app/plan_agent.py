@@ -30,11 +30,12 @@ logger = logging.getLogger(__name__)
 
 EventSink = Callable[[str, dict[str, Any]], Awaitable[None]]
 
-DATA_TOOL_NAMES = {
+SUBAGENT_TOOL_NAMES = {
     "read_athlete_profile",
     "get_weekly_load",
     "search_activities",
     "get_daily_metrics",
+    "web_search",
 }
 
 # --- Plan JSON shape (the contract; not domain validation) -----------------
@@ -103,6 +104,7 @@ def _data_registry(account_id: str) -> dict[str, Any]:
         "get_daily_metrics": lambda **kw: tools_mod.get_daily_metrics(
             account_id=account_id, **kw
         ),
+        "web_search": lambda **kw: tools_mod.web_search(account_id=account_id, **kw),
     }
 
 
@@ -113,8 +115,7 @@ async def _run_evaluator(
 ) -> dict[str, Any]:
     model = settings.plan_model
     tools = (
-        tools_mod.schemas_for(DATA_TOOL_NAMES)
-        + tools_mod.web_search_tool_for(model)
+        tools_mod.schemas_for(SUBAGENT_TOOL_NAMES)
         + [SUBMIT_EVALUATION_TOOL]
     )
     task = (
@@ -153,8 +154,7 @@ async def generate_plan(
         "evaluate_plan": evaluate_plan_handler,
     }
     tools = (
-        tools_mod.schemas_for(DATA_TOOL_NAMES)
-        + tools_mod.web_search_tool_for(model)
+        tools_mod.schemas_for(SUBAGENT_TOOL_NAMES)
         + [EVALUATE_PLAN_TOOL, SUBMIT_PLAN_TOOL]
     )
     task = (
