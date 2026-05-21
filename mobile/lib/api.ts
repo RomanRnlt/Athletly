@@ -36,6 +36,7 @@ interface StreamHandlers {
   onToken: (delta: string) => void;
   onToolCall?: (name: string, args: Record<string, unknown>) => void;
   onToolResult?: (name: string, preview: string) => void;
+  onStatus?: (label: string) => void;
   onDone: (id: string, model: string) => void;
   onError: (message: string) => void;
 }
@@ -44,7 +45,7 @@ interface StreamHandle {
   close: () => void;
 }
 
-type StreamEvent = 'token' | 'tool_call' | 'tool_result' | 'done' | 'error';
+type StreamEvent = 'token' | 'tool_call' | 'tool_result' | 'status' | 'done' | 'error';
 
 function serializeMessages(messages: readonly ChatMessage[]): string {
   const slim = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -158,6 +159,16 @@ export function streamChat(
         try {
           const payload = JSON.parse(event.data) as { name?: string; preview?: string };
           if (payload.name) handlers.onToolResult(payload.name, payload.preview ?? '');
+        } catch {
+          // skip
+        }
+      });
+
+      es.addEventListener('status', (event) => {
+        if (!event.data || !handlers.onStatus) return;
+        try {
+          const payload = JSON.parse(event.data) as { label?: string };
+          if (payload.label) handlers.onStatus(payload.label);
         } catch {
           // skip
         }

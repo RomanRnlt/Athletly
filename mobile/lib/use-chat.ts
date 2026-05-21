@@ -22,6 +22,15 @@ const TOOL_LABELS: Record<string, string> = {
   get_daily_metrics: 'Liest deine Gesundheitsdaten',
   get_weekly_load: 'Berechnet dein Wochenvolumen',
   web_search: 'Recherchiert im Web',
+  read_athlete_profile: 'Liest dein Profil',
+  update_athlete_section: 'Aktualisiert dein Profil',
+  generate_training_plan: 'Baut deinen Trainingsplan',
+  regenerate_plan: 'Baut den Plan neu',
+  evaluate_plan: 'Laesst den Plan bewerten',
+  submit_plan: 'Finalisiert den Plan',
+  get_current_plan: 'Liest deinen Plan',
+  update_plan: 'Passt den Plan an',
+  confirm_plan: 'Aktiviert den Plan',
 };
 
 function makeId(prefix: string): string {
@@ -88,6 +97,9 @@ export function useChat({
         },
         onToolResult: () => {
           setToolStatus(null);
+        },
+        onStatus: (label) => {
+          setToolStatus(label);
         },
         onDone: () => {
           setIsStreaming(false);
