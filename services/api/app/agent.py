@@ -14,12 +14,12 @@ import asyncio
 import json
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import litellm
 
-from . import db, garmin, plan_agent, profile, skills
+from . import agents, db, garmin, profile, skills
 from .config import settings
 from .schemas import ChatMessage
 from .tools import (
@@ -31,14 +31,17 @@ from .tools import (
 
 ONBOARDING_TURN_CAP = 18  # safety net: force-complete onboarding past this
 
-# Tools whose execution streams progress (run the plan sub-agents) rather than
-# returning a single dict. They are in TOOL_SCHEMAS (the model can call them)
-# but NOT in TOOL_REGISTRY (not plain-dispatched).
-STREAMING_TOOLS = {"generate_training_plan", "regenerate_plan"}
+# Tools whose execution streams progress (run a specialist sub-agent) rather
+# than returning a single dict. The generic run_specialist trigger is the only
+# one: it can launch any chat-triggerable agent from the registry. It is NOT in
+# TOOL_REGISTRY (not plain-dispatched).
+STREAMING_TOOLS = {agents.RUN_SPECIALIST_TOOL_NAME}
 
 
 def _tools_for_model(chosen_model: str) -> list[dict[str, Any]]:  # noqa: ARG001
-    return list(TOOL_SCHEMAS)
+    # run_specialist is composed here (its agent enum is derived from the
+    # registry) and appended to the static dispatch tools.
+    return list(TOOL_SCHEMAS) + [agents.chat_specialist_tool_schema()]
 
 
 logger = logging.getLogger(__name__)
@@ -77,18 +80,19 @@ Athlete-Profile-Tools:
   Stuff im einen Update-Call, nicht zwei Updates hintereinander.
 
 Trainingsplan:
-- generate_training_plan: Startet den Plan-Agenten der einen wissenschaftlich
-  fundierten 2-Wochen-Plan baut (recherchiert + laesst ihn unabhaengig
-  bewerten). Nutze das wenn Roman einen Plan will und noch keiner existiert.
-  Bestaetige vorher KURZ den Fokus mit ihm (Ziel, Zeitraum), denn es dauert
-  etwas. Danach existiert ein ENTWURF.
+- run_specialist: Startet einen Spezialisten-Agenten der autonom eine groessere
+  Aufgabe erledigt. Fuer einen Plan: run_specialist(agent="plan", task="..."). Der
+  Plan-Agent recherchiert, baut einen wissenschaftlich fundierten 2-Wochen-Plan
+  und laesst ihn unabhaengig bewerten; danach existiert ein ENTWURF. Nutze das
+  wenn Roman einen Plan will und noch keiner existiert. Bestaetige vorher KURZ
+  den Fokus mit ihm (Ziel, Zeitraum), denn es dauert etwas. Fuer einen kompletten
+  Neu-Plan von Null: reset=true setzen (verwirft den alten Entwurf) - nur wenn
+  Roman grundlegend was anderes will, nicht fuer kleine Aenderungen.
 - get_current_plan: Lies den aktuellen Plan (Entwurf oder aktiv) um mit Roman
   darueber zu reden oder ihn zu bearbeiten.
 - update_plan: Wende Romans gewuenschte Aenderungen an. get_current_plan lesen,
   die weeks im Kopf anpassen, das ganze weeks-Array zurueckgeben. Fuer kleine
-  Tweaks (Einheit verschieben, Dauer aendern, Sportart tauschen).
-- regenerate_plan: Kompletter Neu-Plan von Null. Nur wenn Roman grundlegend
-  was anderes will, nicht fuer kleine Aenderungen.
+  Tweaks (Einheit verschieben, Step retargeten, Sportart tauschen).
 - confirm_plan: Macht den Entwurf zum aktiven Plan. Erst wenn Roman explizit
   zustimmt.
 
@@ -121,6 +125,33 @@ def _sanitize(text: str) -> str:
     return text.replace("—", "-").replace("–", "-")
 
 
+# Predicates for inline-skill `activate_when` conditions (hermes-style
+# declarative activation: the SKILL.md frontmatter names the condition, this
+# generic evaluator decides if it currently holds). App-state conditions need a
+# named predicate here because they are not uniformly inspectable like tool
+# availability. Add a new inline skill = declare activate_when + one predicate.
+INLINE_CONDITIONS: dict[str, Callable[[str], bool]] = {
+    "onboarding_incomplete": lambda account_id: not profile.is_onboarded(account_id),
+}
+
+
+def _active_inline_skills(account_id: str) -> list:
+    """Inline skills whose declared activate_when condition currently holds."""
+    active = []
+    for skill in skills.inline_skills():
+        cond = skill.athletly.get("activate_when")
+        predicate = INLINE_CONDITIONS.get(cond) if cond else None
+        if predicate is None:
+            if cond:
+                logger.warning(
+                    "inline skill %s has unknown activate_when '%s'", skill.name, cond
+                )
+            continue
+        if predicate(account_id):
+            active.append(skill)
+    return active
+
+
 def _system_prompt(account_id: str, messages: list[ChatMessage]) -> str:
     parts: list[str] = []
 
@@ -129,17 +160,18 @@ def _system_prompt(account_id: str, messages: list[ChatMessage]) -> str:
 
     # Safety net: never let onboarding run forever, even if the model never
     # called mark_onboarding_complete. After the cap we flip the flag
-    # deterministically so the next turn is normal coach mode.
+    # deterministically so the onboarding condition stops holding next turn.
     if not onboarded and turns >= ONBOARDING_TURN_CAP:
         profile.mark_onboarded(account_id)
         onboarded = True
 
-    if not onboarded:
-        # Onboarding mode: skill content goes FIRST so the model treats it
-        # as the dominant directive. Base coach prompt comes after.
-        skill = skills.load_skill("onboarding")
-        if skill:
-            parts.append(skill)
+    # Inline skills go FIRST so the model treats an active one (e.g. onboarding)
+    # as the dominant directive. Their activation is frontmatter-driven, not
+    # hardcoded per skill.
+    for skill in _active_inline_skills(account_id):
+        body = skills.load_skill(skill.name)
+        if body:
+            parts.append(body)
 
     parts.append(BASE_SYSTEM_PROMPT)
 
@@ -312,7 +344,7 @@ async def stream_chat(
             yield ("tool_call", {"name": name, "args": args})
 
             if name in STREAMING_TOOLS:
-                async for event_type, payload in _execute_plan_tool(account_id, name):
+                async for event_type, payload in _execute_specialist(account_id, args):
                     if event_type == "__result__":
                         result = payload
                     else:
@@ -340,17 +372,29 @@ async def stream_chat(
     )
 
 
-async def _execute_plan_tool(
-    account_id: str, name: str
+async def _execute_specialist(
+    account_id: str, args: dict[str, Any]
 ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
-    """Run a streaming plan tool (generate/regenerate). Forwards the plan
-    sub-agents' progress events, then yields a final ('__result__', dict)
-    that the caller feeds back to the chat model as the tool result.
+    """Run a chat-triggered specialist (run_specialist). Spawns the agent named
+    in args, forwards its progress events, persists the result by output_kind,
+    then yields a final ('__result__', dict) the caller feeds back to the chat
+    model as the tool result. Generic: a new specialist needs only a registry
+    entry, no change here.
     """
-    if name == "regenerate_plan":
+    agent_name = args.get("agent")
+    task = (args.get("task") or "").strip()
+    reset = bool(args.get("reset"))
+    spec = agents.AGENT_SPECS.get(agent_name) if agent_name else None
+
+    if spec is None or not spec.chat_triggerable:
+        yield ("__result__", {"error": f"Unbekannter Spezialist: {agent_name}"})
+        return
+
+    if reset and spec.output_kind == "training_plan":
         await asyncio.to_thread(db.archive_plans, account_id, ("draft",))
 
-    yield ("status", {"label": "Plan-Agent recherchiert und baut deinen Plan"})
+    # depth 1: the specialist level (the coach's run_specialist call is depth 0).
+    yield ("status", {"label": f"{agent_name}-Agent arbeitet", "depth": 1, "agent": agent_name})
 
     queue: asyncio.Queue[tuple[str, ...]] = asyncio.Queue()
 
@@ -359,37 +403,52 @@ async def _execute_plan_tool(
 
     async def run() -> None:
         try:
-            plan = await plan_agent.generate_plan(account_id, on_event)
+            out = await agents.spawn(
+                agent_name, task or spec.default_task, account_id, on_event
+            )
         except Exception as exc:
-            logger.exception("plan generation failed")
-            plan = {"error": str(exc)}
-        await queue.put(("done", plan))
+            logger.exception("specialist %s failed", agent_name)
+            out = {"error": str(exc)}
+        await queue.put(("done", out))
 
-    task = asyncio.create_task(run())
-    plan: dict[str, Any] | None = None
+    runner = asyncio.create_task(run())
+    out: dict[str, Any] | None = None
     while True:
         item = await queue.get()
         if item[0] == "done":
-            plan = item[1]  # type: ignore[assignment]
+            out = item[1]  # type: ignore[assignment]
             break
         _, event_type, payload = item  # type: ignore[misc]
         yield (event_type, payload)
-    await task
+    await runner
 
-    if not plan or "error" in plan:
-        result = {"error": (plan or {}).get("error", "Plan-Generierung fehlgeschlagen")}
-    else:
-        weeks = plan.get("weeks", [])
+    yield ("__result__", await _persist_specialist_result(account_id, spec, out))
+
+
+async def _persist_specialist_result(
+    account_id: str, spec: agents.AgentSpec, out: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Turn a specialist's raw output into the chat tool result, persisting by
+    output_kind. The db write is run off-thread (Supabase HTTP is blocking)."""
+    if not out or "error" in out:
+        return {"error": (out or {}).get("error", f"{spec.name} fehlgeschlagen")}
+
+    if spec.output_kind == "training_plan":
+        weeks = out.get("weeks", [])
+        if not weeks:
+            return {"error": "Plan-Generierung fehlgeschlagen"}
         row = await asyncio.to_thread(
-            db.insert_plan, account_id, {"weeks": weeks}, plan.get("rationale"), "draft"
+            db.insert_plan, account_id, {"weeks": weeks}, out.get("rationale"), "draft"
         )
-        result = {
+        return {
             "status": "plan_created",
             "plan_id": row.get("id"),
             "weeks": len(weeks),
-            "rationale": plan.get("rationale"),
+            "rationale": out.get("rationale"),
         }
-    yield ("__result__", result)
+
+    # ephemeral: hand the raw output back to the chat model as the tool result.
+    return {"status": "done", "agent": spec.name, "output": out}
 
 
 def _preview(result: dict[str, Any]) -> str:
@@ -398,6 +457,8 @@ def _preview(result: dict[str, Any]) -> str:
         return f"error: {result['error']}"
     if result.get("status") == "plan_created":
         return f"plan draft created ({result.get('weeks', 0)} weeks)"
+    if result.get("status") == "done" and "agent" in result:
+        return f"{result['agent']} done"
     if "has_plan" in result:
         return "plan loaded" if result["has_plan"] else "no plan yet"
     if "onboarding_completed" in result:

@@ -1,7 +1,10 @@
 ---
 name: onboarding
-description: First-conversation skill. Fills in the AthleteProfile through warm organic dialogue.
-trigger: onboarding_completed == false
+description: First-conversation onboarding. Fills the AthleteProfile through warm organic dialogue.
+metadata:
+  athletly:
+    activation: inline
+    activate_when: onboarding_incomplete
 ---
 
 <role>
