@@ -32,13 +32,41 @@ export function getApiBaseUrl(): string {
   return LOCALHOST_FALLBACK;
 }
 
+export interface ToolCallEvent {
+  name: string;
+  args: Record<string, unknown>;
+  depth: number;
+  agent: string;
+}
+
+export interface ToolResultEvent {
+  name: string;
+  preview: string;
+  depth: number;
+  agent: string;
+}
+
+export interface StatusEvent {
+  label: string;
+  depth: number;
+  agent: string;
+}
+
 interface StreamHandlers {
   onToken: (delta: string) => void;
-  onToolCall?: (name: string, args: Record<string, unknown>) => void;
-  onToolResult?: (name: string, preview: string) => void;
-  onStatus?: (label: string) => void;
+  onToolCall?: (event: ToolCallEvent) => void;
+  onToolResult?: (event: ToolResultEvent) => void;
+  onStatus?: (event: StatusEvent) => void;
   onDone: (id: string, model: string) => void;
   onError: (message: string) => void;
+}
+
+function asDepth(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function asAgent(value: unknown): string {
+  return typeof value === 'string' && value.length > 0 ? value : 'coach';
 }
 
 interface StreamHandle {
@@ -144,11 +172,20 @@ export function streamChat(
       es.addEventListener('tool_call', (event) => {
         if (!event.data || !handlers.onToolCall) return;
         try {
-          const payload = JSON.parse(event.data) as {
+          const p = JSON.parse(event.data) as {
             name?: string;
             args?: Record<string, unknown>;
+            depth?: unknown;
+            agent?: unknown;
           };
-          if (payload.name) handlers.onToolCall(payload.name, payload.args ?? {});
+          if (p.name) {
+            handlers.onToolCall({
+              name: p.name,
+              args: p.args ?? {},
+              depth: asDepth(p.depth),
+              agent: asAgent(p.agent),
+            });
+          }
         } catch {
           // skip
         }
@@ -157,8 +194,20 @@ export function streamChat(
       es.addEventListener('tool_result', (event) => {
         if (!event.data || !handlers.onToolResult) return;
         try {
-          const payload = JSON.parse(event.data) as { name?: string; preview?: string };
-          if (payload.name) handlers.onToolResult(payload.name, payload.preview ?? '');
+          const p = JSON.parse(event.data) as {
+            name?: string;
+            preview?: string;
+            depth?: unknown;
+            agent?: unknown;
+          };
+          if (p.name) {
+            handlers.onToolResult({
+              name: p.name,
+              preview: p.preview ?? '',
+              depth: asDepth(p.depth),
+              agent: asAgent(p.agent),
+            });
+          }
         } catch {
           // skip
         }
@@ -167,8 +216,14 @@ export function streamChat(
       es.addEventListener('status', (event) => {
         if (!event.data || !handlers.onStatus) return;
         try {
-          const payload = JSON.parse(event.data) as { label?: string };
-          if (payload.label) handlers.onStatus(payload.label);
+          const p = JSON.parse(event.data) as { label?: string; depth?: unknown; agent?: unknown };
+          if (p.label) {
+            handlers.onStatus({
+              label: p.label,
+              depth: asDepth(p.depth),
+              agent: asAgent(p.agent),
+            });
+          }
         } catch {
           // skip
         }

@@ -46,11 +46,12 @@ function subtitleFor(
 
 export default function ChatScreen() {
   const profile = useAthleteProfile();
-  const { messages, isStreaming, toolStatus, error, sendMessage, triggerWelcome } = useChat({
-    onStreamComplete: () => {
-      profile.refresh();
-    },
-  });
+  const { messages, isStreaming, toolStatus, liveSteps, streamingId, error, sendMessage, triggerWelcome } =
+    useChat({
+      onStreamComplete: () => {
+        profile.refresh();
+      },
+    });
 
   const inverted = useMemo(() => [...messages].reverse(), [messages]);
   const isEmpty = messages.length === 0;
@@ -94,8 +95,14 @@ export default function ChatScreen() {
           <FlatList
             data={inverted}
             inverted
+            extraData={liveSteps}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <ChatBubble message={item} />}
+            renderItem={({ item }) => (
+              <ChatBubble
+                message={item}
+                liveSteps={item.id === streamingId ? liveSteps : undefined}
+              />
+            )}
             contentContainerStyle={{
               paddingHorizontal: 16,
               paddingTop: 12,

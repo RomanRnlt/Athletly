@@ -1,10 +1,24 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import type { ChatMessage } from '@/types/chat';
+import { View, Text, ActivityIndicator } from 'react-native';
+import { Colors } from '@/lib/colors';
+import { ToolGroup } from '@/components/chat/ToolGroup';
+import { ShowWorkFooter } from '@/components/chat/ShowWorkFooter';
+import type { ChatMessage, ToolStep } from '@/types/chat';
 
 interface ChatBubbleProps {
   message: ChatMessage;
+  /** Live activity, passed only for the currently-streaming assistant message. */
+  liveSteps?: readonly ToolStep[];
 }
+
+const BUBBLE_STYLE = {
+  backgroundColor: '#FFFFFF',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.06,
+  shadowRadius: 3,
+  elevation: 2,
+} as const;
 
 function formatTime(date: Date): string {
   const h = date.getHours().toString().padStart(2, '0');
@@ -12,23 +26,40 @@ function formatTime(date: Date): string {
   return `${h}:${m}`;
 }
 
-function AssistantBubble({ message }: { message: ChatMessage }) {
+function ThinkingPill() {
   return (
-    <View className="self-start max-w-[85%] mb-3">
-      <View
-        className="rounded-2xl rounded-tl-sm px-4 py-3"
-        style={{
-          backgroundColor: '#FFFFFF',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06,
-          shadowRadius: 3,
-          elevation: 2,
-        }}
-      >
-        <Text className="text-text-primary text-base leading-6">{message.content}</Text>
-      </View>
-      <Text className="text-text-muted text-[10px] mt-1 ml-1">{formatTime(message.timestamp)}</Text>
+    <View
+      className="flex-row items-center gap-2 rounded-2xl rounded-tl-sm px-4 py-3"
+      style={BUBBLE_STYLE}
+    >
+      <ActivityIndicator size="small" color={Colors.textMuted} />
+      <Text className="text-text-muted text-sm">Denke nach...</Text>
+    </View>
+  );
+}
+
+function AssistantBubble({ message, liveSteps }: { message: ChatMessage; liveSteps?: readonly ToolStep[] }) {
+  const live = !!liveSteps && liveSteps.length > 0;
+  const hasText = message.content.length > 0;
+  const footerSteps = live ? undefined : message.toolSteps;
+
+  return (
+    <View className="self-start max-w-[92%] mb-3">
+      {live ? <ToolGroup steps={liveSteps as readonly ToolStep[]} /> : null}
+
+      {hasText ? (
+        <View className="rounded-2xl rounded-tl-sm px-4 py-3" style={BUBBLE_STYLE}>
+          <Text className="text-text-primary text-base leading-6">{message.content}</Text>
+        </View>
+      ) : !live ? (
+        <ThinkingPill />
+      ) : null}
+
+      {footerSteps && footerSteps.length > 0 ? <ShowWorkFooter steps={footerSteps} /> : null}
+
+      {hasText ? (
+        <Text className="text-text-muted text-[10px] mt-1 ml-1">{formatTime(message.timestamp)}</Text>
+      ) : null}
     </View>
   );
 }
@@ -54,10 +85,10 @@ function SystemBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-export function ChatBubble({ message }: ChatBubbleProps) {
+export function ChatBubble({ message, liveSteps }: ChatBubbleProps) {
   switch (message.role) {
     case 'assistant':
-      return <AssistantBubble message={message} />;
+      return <AssistantBubble message={message} liveSteps={liveSteps} />;
     case 'user':
       return <UserBubble message={message} />;
     case 'system':

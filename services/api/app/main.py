@@ -121,6 +121,12 @@ async def chat_stream(req: ChatRequest, account_id: AccountId) -> EventSourceRes
     async def event_source():
         try:
             async for event_type, payload in stream_chat(account_id, req.messages, req.model):
+                # Default nesting metadata for coach-origin events. Sub-agent
+                # events already carry depth/agent (set in agents.spawn), so
+                # setdefault leaves those untouched.
+                if event_type in ("tool_call", "tool_result", "status"):
+                    payload.setdefault("depth", 0)
+                    payload.setdefault("agent", "coach")
                 yield {"event": event_type, "data": json.dumps(payload)}
             yield {
                 "event": "done",
