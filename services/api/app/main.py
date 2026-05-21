@@ -15,8 +15,11 @@ from .agent import complete_chat, stream_chat
 from .auth import get_account_id
 from .config import settings
 from .schemas import (
+    ActivityDTO,
+    ActivityListResponse,
     ChatRequest,
     ChatResponse,
+    DailyMetricDTO,
     GarminConnectRequest,
     GarminConnectResponse,
     GarminMfaRequest,
@@ -24,6 +27,7 @@ from .schemas import (
     GarminSyncRequest,
     GarminSyncResponse,
     HealthResponse,
+    MetricsListResponse,
     ProfileResponse,
     ProfileSectionDTO,
 )
@@ -132,6 +136,26 @@ async def garmin_connect_mfa(
 @app.get("/garmin/status", response_model=GarminStatusResponse)
 async def garmin_status(account_id: AccountId) -> GarminStatusResponse:
     return GarminStatusResponse(**garmin.get_status(account_id))
+
+
+@app.get("/activities", response_model=ActivityListResponse)
+async def list_activities(
+    account_id: AccountId,
+    sport: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> ActivityListResponse:
+    rows = db.list_activities(account_id, sport=sport, limit=min(limit, 200), offset=offset)
+    sports = db.distinct_sports(account_id)
+    activities = [ActivityDTO(**{k: r.get(k) for k in ActivityDTO.model_fields}) for r in rows]
+    return ActivityListResponse(activities=activities, sports=sports, returned=len(activities))
+
+
+@app.get("/metrics", response_model=MetricsListResponse)
+async def list_metrics(account_id: AccountId, days: int = 30) -> MetricsListResponse:
+    rows = db.get_daily_metrics(account_id, max(1, min(days, 180)))
+    metrics = [DailyMetricDTO(**{k: r.get(k) for k in DailyMetricDTO.model_fields}) for r in rows]
+    return MetricsListResponse(metrics=metrics, returned=len(metrics))
 
 
 @app.post("/garmin/sync", response_model=GarminSyncResponse)

@@ -297,6 +297,69 @@ def _sync_daily_metrics_sync(account_id: str, garmin: Garmin, days: int) -> int:
         except Exception:
             logger.debug("get_sleep_data failed for %s", day, exc_info=True)
 
+        # Training Readiness is Garmin's blended 0-100 recovery score; when
+        # present it overrides the HRV-status heuristic above.
+        try:
+            if hasattr(garmin, "get_training_readiness"):
+                tr = garmin.get_training_readiness(day)
+                if isinstance(tr, list) and tr:
+                    tr = tr[0]
+                if isinstance(tr, dict):
+                    tr_score = tr.get("score") or tr.get("trainingReadinessScore")
+                    if tr_score is not None:
+                        row["recovery_score"] = _to_int(tr_score)
+                        wrote_any = True
+        except Exception:
+            logger.debug("get_training_readiness failed for %s", day, exc_info=True)
+
+        try:
+            spo2 = garmin.get_spo2_data(day)
+            if isinstance(spo2, dict):
+                value = spo2.get("averageSpO2") or (spo2.get("allDaySpO2") or {}).get(
+                    "averageSpO2Value"
+                )
+                if value is not None:
+                    row["spo2_avg"] = float(value)
+                    wrote_any = True
+        except Exception:
+            logger.debug("get_spo2_data failed for %s", day, exc_info=True)
+
+        try:
+            resp = garmin.get_respiration_data(day)
+            if isinstance(resp, dict):
+                value = resp.get("avgWakingRespirationValue")
+                if value is not None:
+                    row["respiration_avg"] = float(value)
+                    wrote_any = True
+        except Exception:
+            logger.debug("get_respiration_data failed for %s", day, exc_info=True)
+
+        try:
+            maxm = garmin.get_max_metrics(day)
+            generic: dict[str, Any] = {}
+            if isinstance(maxm, dict):
+                generic = maxm.get("generic") or {}
+            elif isinstance(maxm, list) and maxm:
+                generic = (maxm[0] or {}).get("generic") or {}
+            vo2 = generic.get("vo2MaxPreciseValue") or generic.get("vo2MaxValue")
+            if vo2 is not None:
+                row["vo2max"] = float(vo2)
+                wrote_any = True
+        except Exception:
+            logger.debug("get_max_metrics failed for %s", day, exc_info=True)
+
+        try:
+            im = garmin.get_intensity_minutes_data(day)
+            if isinstance(im, dict):
+                moderate = im.get("moderateIntensityMinutes") or 0
+                vigorous = im.get("vigorousIntensityMinutes") or 0
+                total = moderate + vigorous
+                if total > 0:
+                    row["intensity_minutes"] = _to_int(total)
+                    wrote_any = True
+        except Exception:
+            logger.debug("get_intensity_minutes_data failed for %s", day, exc_info=True)
+
         if wrote_any:
             db.upsert_daily_metric(account_id, row)
             synced += 1

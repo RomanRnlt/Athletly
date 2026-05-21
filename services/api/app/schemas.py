@@ -82,3 +82,51 @@ class ProfileResponse(BaseModel):
     is_empty: bool
     onboarding_completed: bool
     filled_sections: int
+
+
+class ActivityDTO(BaseModel):
+    garmin_activity_id: str
+    sport: str | None = None
+    start_time: str | None = None
+    duration_seconds: int | None = None
+    distance_meters: float | None = None
+    avg_hr: int | None = None
+    max_hr: int | None = None
+    calories: int | None = None
+    training_effect: float | None = None
+    avg_pace_min_km: float | None = None
+    elevation_gain_m: float | None = None
+
+
+class ActivityListResponse(BaseModel):
+    activities: list[ActivityDTO]
+    sports: list[str]
+    returned: int
+
+
+class DailyMetricDTO(BaseModel):
+    date: str
+    resting_heart_rate: int | None = None
+    hrv_avg: float | None = None
+    sleep_score: int | None = None
+    sleep_duration_minutes: float | None = None
+    sleep_deep_minutes: float | None = None
+    sleep_light_minutes: float | None = None
+    sleep_rem_minutes: float | None = None
+    sleep_awake_minutes: float | None = None
+    stress_avg: int | None = None
+    body_battery_high: int | None = None
+    body_battery_low: int | None = None
+    recovery_score: int | None = None
+    steps: int | None = None
+    active_calories: int | None = None
+    total_calories: int | None = None
+    vo2max: float | None = None
+    intensity_minutes: int | None = None
+    spo2_avg: float | None = None
+    respiration_avg: float | None = None
+
+
+class MetricsListResponse(BaseModel):
+    metrics: list[DailyMetricDTO]
+    returned: int

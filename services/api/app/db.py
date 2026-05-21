@@ -103,6 +103,44 @@ def search_activities(
     return list(res.data or [])
 
 
+def list_activities(
+    account_id: str,
+    sport: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    sb = get_service_client()
+    q = (
+        sb.table("activities")
+        .select(
+            "garmin_activity_id, sport, start_time, duration_seconds, "
+            "distance_meters, avg_hr, max_hr, calories, training_effect, "
+            "avg_pace_min_km, elevation_gain_m"
+        )
+        .eq("account_id", account_id)
+    )
+    if sport:
+        q = q.eq("sport", sport)
+    q = q.order("start_time", desc=True).range(offset, offset + max(1, limit) - 1)
+    res = q.execute()
+    return list(res.data or [])
+
+
+def distinct_sports(account_id: str) -> list[str]:
+    sb = get_service_client()
+    res = (
+        sb.table("activities")
+        .select("sport")
+        .eq("account_id", account_id)
+        .execute()
+    )
+    seen: dict[str, int] = {}
+    for row in res.data or []:
+        s = (row.get("sport") or "unknown").lower()
+        seen[s] = seen.get(s, 0) + 1
+    return sorted(seen.keys(), key=lambda s: (-seen[s], s))
+
+
 def get_activity(account_id: str, garmin_activity_id: str) -> dict[str, Any] | None:
     sb = get_service_client()
     res = (
@@ -160,6 +198,8 @@ _METRIC_COLS = (
     "total_calories",
     "vo2max",
     "intensity_minutes",
+    "spo2_avg",
+    "respiration_avg",
 )
 
 
