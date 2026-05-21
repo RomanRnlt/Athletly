@@ -130,3 +130,8 @@ class DailyMetricDTO(BaseModel):
 class MetricsListResponse(BaseModel):
     metrics: list[DailyMetricDTO]
     returned: int
+
+
+class ActivityDetailResponse(BaseModel):
+    activity: ActivityDTO
+    extras: dict[str, object] = {}

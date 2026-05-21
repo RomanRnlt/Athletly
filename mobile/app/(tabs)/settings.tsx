@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Globe,
   HelpCircle,
-  HeartPulse,
   Heart,
   Lock,
   LogOut,
@@ -157,16 +156,15 @@ export default function SettingsScreen() {
           {garminConnected && (
             <View className="mt-3 flex-row items-center justify-between bg-surface rounded-2xl px-2 py-1">
               <Pressable
-                onPress={() => router.push('/activities')}
+                onPress={() => router.push('/synced-data')}
                 className="flex-1 flex-row items-center px-2 py-2"
                 accessibilityRole="button"
-                accessibilityLabel="Aktivitaeten ansehen"
+                accessibilityLabel="Synced Data ansehen"
               >
                 <View className="flex-1">
-                  <Text className="text-text-primary text-sm font-medium">
-                    {status?.activity_count ?? 0} Aktivitaeten in der DB
-                  </Text>
+                  <Text className="text-text-primary text-sm font-medium">Synced Data</Text>
                   <Text className="text-text-muted text-xs mt-0.5">
+                    {status?.activity_count ?? 0} Aktivitaeten ·{' '}
                     {formatRelative(status?.last_sync_at ?? null) ?? 'Noch nie synchronisiert'}
                   </Text>
                 </View>
@@ -183,19 +181,6 @@ export default function SettingsScreen() {
                   disabled={isSyncing}
                 />
               </View>
-            </View>
-          )}
-
-          {garminConnected && (
-            <View className="mt-3">
-              <Card variant="standard" className="p-0 overflow-hidden">
-                <SettingsRow
-                  icon={HeartPulse}
-                  label="Gesundheitsdaten"
-                  onPress={() => router.push('/health')}
-                  isLast
-                />
-              </Card>
             </View>
           )}
         </View>

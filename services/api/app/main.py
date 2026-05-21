@@ -15,6 +15,7 @@ from .agent import complete_chat, stream_chat
 from .auth import get_account_id
 from .config import settings
 from .schemas import (
+    ActivityDetailResponse,
     ActivityDTO,
     ActivityListResponse,
     ChatRequest,
@@ -31,6 +32,36 @@ from .schemas import (
     ProfileResponse,
     ProfileSectionDTO,
 )
+
+
+def _extract_activity_extras(raw: dict) -> dict:
+    extras = {
+        "training_effect_aerobic": raw.get("aerobicTrainingEffect"),
+        "training_effect_anaerobic": raw.get("anaerobicTrainingEffect"),
+        "training_effect_label": raw.get("trainingEffectLabel"),
+        "avg_cadence": raw.get("averageRunningCadenceInStepsPerMinute")
+        or raw.get("averageBikingCadenceInRevPerMinute"),
+        "max_cadence": raw.get("maxRunningCadenceInStepsPerMinute")
+        or raw.get("maxBikingCadenceInRevPerMinute"),
+        "avg_power_w": raw.get("avgPower"),
+        "max_power_w": raw.get("maxPower"),
+        "normalized_power_w": raw.get("normPower"),
+        "avg_stride_length_m": raw.get("avgStrideLength"),
+        "avg_vertical_oscillation": raw.get("avgVerticalOscillation"),
+        "avg_ground_contact_ms": raw.get("avgGroundContactTime"),
+        "elevation_loss_m": raw.get("elevationLoss"),
+        "min_elevation_m": raw.get("minElevation"),
+        "max_elevation_m": raw.get("maxElevation"),
+        "moving_duration_s": raw.get("movingDuration"),
+        "lap_count": raw.get("lapCount"),
+        "steps": raw.get("steps"),
+        "min_temperature_c": raw.get("minTemperature"),
+        "max_temperature_c": raw.get("maxTemperature"),
+        "device": raw.get("deviceName"),
+        "location": raw.get("locationName"),
+        "activity_name": raw.get("activityName"),
+    }
+    return {k: v for k, v in extras.items() if v is not None}
 
 logging.basicConfig(level=settings.log_level.upper())
 log = logging.getLogger("athletly.api")
@@ -156,6 +187,18 @@ async def list_metrics(account_id: AccountId, days: int = 30) -> MetricsListResp
     rows = db.get_daily_metrics(account_id, max(1, min(days, 180)))
     metrics = [DailyMetricDTO(**{k: r.get(k) for k in DailyMetricDTO.model_fields}) for r in rows]
     return MetricsListResponse(metrics=metrics, returned=len(metrics))
+
+
+@app.get("/activities/{garmin_activity_id}", response_model=ActivityDetailResponse)
+async def activity_detail(
+    garmin_activity_id: str, account_id: AccountId
+) -> ActivityDetailResponse:
+    row = db.get_activity(account_id, garmin_activity_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity nicht gefunden")
+    raw = row.get("raw_data") or {}
+    activity = ActivityDTO(**{k: row.get(k) for k in ActivityDTO.model_fields})
+    return ActivityDetailResponse(activity=activity, extras=_extract_activity_extras(raw))
 
 
 @app.post("/garmin/sync", response_model=GarminSyncResponse)
