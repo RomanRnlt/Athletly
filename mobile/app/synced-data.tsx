@@ -61,14 +61,23 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   return (
     <Pressable
       onPress={onPress}
-      className="px-4 py-2 rounded-full"
       style={{
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 999,
+        marginRight: 8,
         backgroundColor: selected ? Colors.primary : Colors.surface,
         borderWidth: 1,
         borderColor: selected ? Colors.primary : Colors.divider,
       }}
     >
-      <Text className="text-sm font-medium" style={{ color: selected ? '#FFFFFF' : Colors.textSecondary }}>
+      <Text
+        style={{
+          fontSize: 14,
+          fontWeight: '500',
+          color: selected ? '#FFFFFF' : Colors.textSecondary,
+        }}
+      >
         {label}
       </Text>
     </Pressable>
@@ -80,7 +89,7 @@ function FilterRow({ children }: { children: React.ReactNode }) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 12 }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}
     >
       {children}
     </ScrollView>
