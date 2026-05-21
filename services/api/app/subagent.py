@@ -59,6 +59,8 @@ async def run_subagent(
         {"role": "user", "content": task},
     ]
 
+    last_text = ""  # best-effort: last assistant prose, surfaced on max_turns
+
     for _turn in range(max_turns):
         try:
             response = await litellm.acompletion(
@@ -72,8 +74,22 @@ async def run_subagent(
             logger.exception("sub-agent completion failed")
             return {"error": f"sub-agent LLM error: {exc}"}
 
-        message = response.choices[0].message
+        # Providers can return a response with no choices (safety filter, token
+        # cap, transient empty candidates - seen with Gemini). Never index
+        # blindly; degrade to best-effort instead of crashing the whole spawn.
+        choices = getattr(response, "choices", None) or []
+        if not choices:
+            logger.warning("sub-agent got empty choices from %s", model)
+            out: dict[str, Any] = {"error": "sub-agent got empty response (no choices)"}
+            if last_text:
+                out["text"] = last_text
+            return out
+
+        message = choices[0].message
         tool_calls = getattr(message, "tool_calls", None) or []
+
+        if message.content:
+            last_text = message.content
 
         if not tool_calls:
             return {"text": message.content or ""}
@@ -133,7 +149,15 @@ async def run_subagent(
                 }
             )
 
-    return {"error": f"sub-agent hit max_turns ({max_turns}) without finishing"}
+    # Ran out of turns without calling the terminal tool. Surface the last
+    # assistant prose so the caller has something usable to log/show rather
+    # than a bare error (best-effort, ADR agent-architecture decision 2).
+    result: dict[str, Any] = {
+        "error": f"sub-agent hit max_turns ({max_turns}) without finishing"
+    }
+    if last_text:
+        result["text"] = last_text
+    return result
 
 
 def _short(result: dict[str, Any]) -> str:
