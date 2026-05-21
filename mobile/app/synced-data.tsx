@@ -62,18 +62,22 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
     <Pressable
       onPress={onPress}
       style={{
+        height: 38,
         paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 999,
+        borderRadius: 19,
         marginRight: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: selected ? Colors.primary : Colors.surface,
         borderWidth: 1,
         borderColor: selected ? Colors.primary : Colors.divider,
       }}
     >
       <Text
+        numberOfLines={1}
         style={{
           fontSize: 14,
+          lineHeight: 18,
           fontWeight: '500',
           color: selected ? '#FFFFFF' : Colors.textSecondary,
         }}
@@ -86,13 +90,15 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
 
 function FilterRow({ children }: { children: React.ReactNode }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}
-    >
-      {children}
-    </ScrollView>
+    <View style={{ height: 62 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center' }}
+      >
+        {children}
+      </ScrollView>
+    </View>
   );
 }
 
