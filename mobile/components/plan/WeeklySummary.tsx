@@ -12,6 +12,7 @@ interface WeeklySummaryProps {
 }
 
 function formatTotalDuration(minutes: number): string {
+  if (minutes <= 0) return '0min';
   if (minutes < 60) return `${minutes}min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -37,7 +38,9 @@ export function WeeklySummary({ plan }: WeeklySummaryProps) {
   const allSessions = useMemo(() => getAllSessions(plan), [plan]);
   const distribution = useMemo(() => buildSportDistribution(plan), [plan]);
   const totalSessions = allSessions.length;
-  const totalDuration = allSessions.reduce((sum, s) => sum + s.duration_minutes, 0);
+  // estimatedMinutes is the client-derived approximation (the grammar has no
+  // session-level duration), so the total is a guide, not an exact figure.
+  const totalDuration = allSessions.reduce((sum, s) => sum + s.estimatedMinutes, 0);
 
   return (
     <Card variant="standard" className="mb-4">
@@ -58,7 +61,7 @@ export function WeeklySummary({ plan }: WeeklySummaryProps) {
 
       <View className="border-t border-divider pt-3 mb-3">
         <Text className="text-text-primary text-sm font-medium">
-          {totalSessions} Einheiten / {formatTotalDuration(totalDuration)}
+          {totalSessions} Einheiten{totalDuration > 0 ? ` / ca. ${formatTotalDuration(totalDuration)}` : ''}
         </Text>
       </View>
 

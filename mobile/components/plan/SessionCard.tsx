@@ -1,3 +1,12 @@
+/**
+ * SessionCard - renders a planned session in the universal grammar (ADR 0001).
+ *
+ * Sport-agnostic by construction: it branches on grammar structure
+ * (group.mode, step.role, target.kind, prescription.kind), NEVER on sport. The
+ * same component renders a run, a strength split, a swim set, or a functional
+ * WOD. Presentation only; no coaching judgments here.
+ */
+
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Clock } from 'lucide-react-native';
@@ -5,56 +14,96 @@ import { Badge } from '@/components/ui/Badge';
 import { Colors } from '@/lib/colors';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportLabel } from '@/lib/sport-icons';
-import type { PlannedSession } from '@/types/plan';
+import {
+  formatDuration,
+  formatGroupMode,
+  formatPrescription,
+  formatTarget,
+  getIntentLabel,
+  getIntentTier,
+  getRoleLabel,
+} from '@/lib/plan-format';
+import type { Group, PlannedSession, Step } from '@/types/plan';
 
 interface SessionCardProps {
   session: PlannedSession;
 }
 
-const INTENSITY_LABELS: Record<string, string> = {
-  easy: 'Leicht',
-  recovery: 'Leicht',
-  low: 'Leicht',
-  moderate: 'Moderat',
-  tempo: 'Moderat',
-  steady: 'Moderat',
-  high: 'Intensiv',
-  hard: 'Intensiv',
-  threshold: 'Intensiv',
-};
-
-function getIntensityLabel(raw: string): string {
-  return INTENSITY_LABELS[raw.trim().toLowerCase()] ?? 'Moderat';
+function PrescriptionChip({ text }: { readonly text: string }) {
+  return (
+    <View style={styles.chip}>
+      <Text className="text-xs font-medium" style={{ color: Colors.primary }}>
+        {text}
+      </Text>
+    </View>
+  );
 }
 
-const SESSION_TYPE_LABELS: Record<string, string> = {
-  intervals: 'Intervalle',
-  tempo: 'Tempo',
-  long_run: 'Langer Lauf',
-  easy_run: 'Lockerer Lauf',
-  recovery: 'Erholung',
-  strength: 'Kraft',
-  endurance: 'Ausdauer',
-  race: 'Wettkampf',
-};
+function StepLine({ step }: { readonly step: Step }) {
+  const roleLabel = getRoleLabel(step.role);
+  const targetText = formatTarget(step.target);
+  const prescription = formatPrescription(step.prescription);
 
-function getSessionTypeLabel(sessionType: string): string {
-  const key = sessionType.trim().toLowerCase().replace(/\s+/g, '_');
-  return SESSION_TYPE_LABELS[key] ?? sessionType;
+  // With an explicit movement (e.g. "Squat") it leads and the role becomes a
+  // sublabel; for implicit moves (run/swim) the role label leads.
+  const head = step.movement || roleLabel;
+  const subParts = [step.movement ? roleLabel : '', step.note].filter(Boolean);
+
+  return (
+    <View className="flex-row items-start gap-2 py-1">
+      <View className="flex-1">
+        <Text className="text-sm" style={{ color: Colors.textPrimary }}>
+          {head}
+          {targetText ? `  ${targetText}` : ''}
+        </Text>
+        {subParts.length > 0 ? (
+          <Text className="text-xs mt-0.5" style={{ color: Colors.textMuted }}>
+            {subParts.join(' · ')}
+          </Text>
+        ) : null}
+      </View>
+      {prescription ? <PrescriptionChip text={prescription} /> : null}
+    </View>
+  );
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} Min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+function GroupBlock({ group }: { readonly group: Group }) {
+  const header = formatGroupMode(group);
+  const showHeader = Boolean(header) || Boolean(group.label);
+
+  return (
+    <View className="mb-2">
+      {showHeader ? (
+        <View className="flex-row items-center gap-2 mb-0.5">
+          {header ? (
+            <Text
+              className="text-xs font-bold uppercase tracking-wide"
+              style={{ color: Colors.textSecondary }}
+            >
+              {header}
+            </Text>
+          ) : null}
+          {group.label ? (
+            <Text className="text-xs font-medium" style={{ color: Colors.textMuted }}>
+              {group.label}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+      {group.steps.map((step, idx) => (
+        <StepLine key={`step-${idx}`} step={step} />
+      ))}
+    </View>
+  );
 }
 
 export function SessionCard({ session }: SessionCardProps) {
   const sportColor = getSportColor(session.sport);
-  const intensityLabel = getIntensityLabel(session.intensity);
-  const typeLabel = getSessionTypeLabel(session.session_type);
   const sportLabel = getSportLabel(session.sport);
+  const intentLabel = getIntentLabel(session.intent);
+  const intentTier = getIntentTier(session.intent);
+  const duration = formatDuration(session.estimatedMinutes);
+  const hasGroups = session.groups.length > 0;
 
   return (
     <View style={styles.card} className="bg-surface mb-3">
@@ -62,25 +111,35 @@ export function SessionCard({ session }: SessionCardProps) {
 
       <View className="p-4">
         <View className="flex-row items-center justify-between mt-1 mb-2">
-          <View className="flex-row items-center gap-2">
-            <Badge type="sport" sport={session.sport} label={sportLabel} />
-            <Text className="text-xs font-medium" style={{ color: Colors.textMuted }}>
-              {typeLabel}
+          <Badge type="sport" sport={session.sport} label={sportLabel} />
+          <Badge type="intensity" intensity={intentTier} label={intentLabel} />
+        </View>
+
+        {session.headline ? (
+          <Text
+            className="text-sm font-medium mb-3 leading-5"
+            style={{ color: Colors.textPrimary }}
+          >
+            {session.headline}
+          </Text>
+        ) : null}
+
+        {hasGroups ? (
+          <View className="mb-1">
+            {session.groups.map((group, idx) => (
+              <GroupBlock key={`group-${idx}`} group={group} />
+            ))}
+          </View>
+        ) : null}
+
+        {duration ? (
+          <View className="flex-row items-center gap-1.5 mt-1">
+            <Clock size={14} color={Colors.textSecondary} strokeWidth={2} />
+            <Text className="text-sm" style={{ color: Colors.textSecondary }}>
+              ca. {duration}
             </Text>
           </View>
-          <Badge type="intensity" intensity={session.intensity} label={intensityLabel} />
-        </View>
-
-        <Text className="text-sm mb-3 leading-5" style={{ color: Colors.textSecondary }}>
-          {session.description}
-        </Text>
-
-        <View className="flex-row items-center gap-1.5">
-          <Clock size={14} color={Colors.textSecondary} strokeWidth={2} />
-          <Text className="text-sm" style={{ color: Colors.textSecondary }}>
-            {formatDuration(session.duration_minutes)}
-          </Text>
-        </View>
+        ) : null}
       </View>
     </View>
   );
@@ -98,6 +157,12 @@ const styles = StyleSheet.create({
   },
   accentBar: {
     height: 3,
+  },
+  chip: {
+    backgroundColor: Colors.primaryUltraLight,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
 });
 

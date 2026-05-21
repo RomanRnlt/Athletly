@@ -210,28 +210,155 @@ def mark_onboarding_complete(account_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Plan schema (shared contract; plan_agent reuses these)
+# Universal session grammar (ADR 0001): ONE shape for every sport. A session
+# is Session Core (date/sport/intent/headline/load/status) plus depth-1
+# groups -> steps. All real numbers (km, sets, reps, watts, pace, kg) live in
+# step targets/prescriptions, never on the session itself. These schemas are
+# strict FORM contracts (closed enums + required keys + nullable leaves), not
+# domain logic; the plan/evaluate skills own every training judgment.
 # ---------------------------------------------------------------------------
+
+SESSION_INTENTS = [
+    "recovery", "aerobic_base", "tempo", "threshold",
+    "vo2max", "strength", "skill", "competition",
+]
+GROUP_MODES = ["fixed", "for_time", "amrap", "emom"]
+STEP_ROLES = ["warmup", "work", "recovery", "rest", "cooldown"]
+TARGET_KINDS = ["time", "distance", "reps", "open"]
+PRESCRIPTION_KINDS = ["pace", "hr", "power", "rpe", "load", "none"]
+
+TARGET_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string",
+            "enum": TARGET_KINDS,
+            "description": "What is measured. time->seconds, distance->meters, reps->count, open->no amount.",
+        },
+        "amount": {
+            "type": ["number", "null"],
+            "description": (
+                "The number in canonical units (time=seconds, distance=meters, "
+                "reps=count). MUST be null when kind='open', non-null otherwise."
+            ),
+        },
+        "unit": {
+            "type": "string",
+            "description": "Display hint only (e.g. 'km','m','reps',''). Storage stays canonical in amount.",
+        },
+    },
+    "required": ["kind", "amount", "unit"],
+}
+
+PRESCRIPTION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string",
+            "enum": PRESCRIPTION_KINDS,
+            "description": "How hard. Use 'none' for steps with no intensity target (e.g. rest).",
+        },
+        "value": {
+            "type": ["string", "null"],
+            "description": (
+                "Absolute resolved point value, e.g. '3:58/km','155bpm','250W',"
+                "'RPE 7','100kg'. null when using rng or kind='none'."
+            ),
+        },
+        "rng": {
+            "type": ["array", "null"],
+            "items": {"type": "number"},
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Optional [low, high] numeric range instead of a point value, else null.",
+        },
+    },
+    "required": ["kind", "value", "rng"],
+}
+
+STEP_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "role": {"type": "string", "enum": STEP_ROLES},
+        "target": TARGET_SCHEMA,
+        "prescription": PRESCRIPTION_SCHEMA,
+        "movement": {
+            "type": "string",
+            "description": (
+                "Free-text exercise / muscle focus (e.g. 'Squat','Bench Press'). "
+                "Empty string for implicit moves like running or swimming."
+            ),
+        },
+        "note": {"type": "string", "description": "Optional cue, else empty string."},
+    },
+    "required": ["role", "target", "prescription", "movement", "note"],
+}
+
+GROUP_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "mode": {
+            "type": "string",
+            "enum": GROUP_MODES,
+            "description": "Execution mode. fixed=set rounds; for_time/amrap/emom=functional formats.",
+        },
+        "label": {
+            "type": "string",
+            "description": "Optional block name (e.g. 'Push Day','Main set'), else empty string.",
+        },
+        "rounds": {"type": ["integer", "null"], "description": "Rounds for mode 'fixed', else null."},
+        "cap_s": {"type": ["integer", "null"], "description": "Time cap in seconds for for_time/amrap/emom, else null."},
+        "interval_s": {"type": ["integer", "null"], "description": "EMOM interval in seconds, else null."},
+        "steps": {
+            "type": "array",
+            "items": STEP_SCHEMA,
+            "description": (
+                "Depth-1 step sequence. NEVER nest groups; write ladders/pyramids "
+                "as explicit steps."
+            ),
+        },
+    },
+    "required": ["mode", "label", "rounds", "cap_s", "interval_s", "steps"],
+}
 
 SESSION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "sport": {"type": "string"},
-        "session_type": {"type": "string"},
-        "intensity": {"type": "string", "enum": ["easy", "moderate", "hard"]},
-        "duration_minutes": {"type": "integer"},
-        "description": {"type": "string"},
-        "muscle_groups": {"type": "array", "items": {"type": "string"}},
+        "date": {"type": "string", "description": "ISO date YYYY-MM-DD."},
+        "sport": {
+            "type": "string",
+            "description": "Any sport key, generic (e.g. 'running','gym','cycling','swimming').",
+        },
+        "intent": {
+            "type": "string",
+            "enum": SESSION_INTENTS,
+            "description": "Primary training intent of the session.",
+        },
+        "headline": {
+            "type": "string",
+            "description": "Short human-readable summary, e.g. 'Squat 4x6, Dips EMOM, Wall Balls AMRAP'.",
+        },
+        "load": {"type": ["number", "null"], "description": "Estimated training load (arbitrary scale), or null."},
+        "status": {"type": "string", "description": "Lifecycle status; use 'planned' for new sessions."},
+        "groups": {
+            "type": "array",
+            "items": GROUP_SCHEMA,
+            "description": "Structured blocks. Empty array for unstructured activity (headline only).",
+        },
     },
-    "required": ["sport", "session_type", "intensity", "duration_minutes", "description"],
+    "required": ["date", "sport", "intent", "headline", "groups"],
 }
 
 DAY_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "date": {"type": "string", "description": "ISO date YYYY-MM-DD"},
-        "sessions": {"type": "array", "items": SESSION_SCHEMA},
-        "rest_reason": {"type": "string", "description": "Only when sessions is empty"},
+        "date": {"type": "string", "description": "ISO date YYYY-MM-DD."},
+        "sessions": {
+            "type": "array",
+            "items": SESSION_SCHEMA,
+            "description": "Zero or more sessions. Empty array = rest day (set rest_reason).",
+        },
+        "rest_reason": {"type": "string", "description": "Why this is a rest day. Only when sessions is empty."},
     },
     "required": ["date", "sessions"],
 }
@@ -239,20 +366,58 @@ DAY_SCHEMA: dict[str, Any] = {
 WEEK_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "week_start": {"type": "string", "description": "Monday, ISO date"},
-        "coach_message": {"type": "string"},
+        "week_start": {"type": "string", "description": "Monday, ISO date."},
+        "coach_message": {"type": "string", "description": "Short framing of the week for the athlete."},
         "days": {"type": "array", "items": DAY_SCHEMA},
     },
     "required": ["week_start", "days"],
 }
 
+# rationale FIRST: reasoning before the conclusion (weeks) lifts output quality.
 PLAN_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "rationale": {"type": "string"},
-        "weeks": {"type": "array", "items": WEEK_SCHEMA},
+        "rationale": {
+            "type": "string",
+            "description": (
+                "Why this plan: the science + sources, how it serves the athlete's "
+                "goal, current load, recovery state, and constraints."
+            ),
+        },
+        "weeks": {
+            "type": "array",
+            "items": WEEK_SCHEMA,
+            "description": "Exactly 2 weeks, exactly 7 day objects each (Mon-Sun), 14 days total.",
+        },
     },
     "required": ["rationale", "weeks"],
+}
+
+# Evaluator verdict. summary/issues/suggestions/score come BEFORE the boolean
+# (reasoning before conclusion); only summary + approved are required.
+EVALUATION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string", "description": "One-paragraph verdict, written before the decision."},
+        "issues": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Concrete, actionable problems (name the day + what is wrong).",
+        },
+        "suggestions": {"type": "array", "items": {"type": "string"}, "description": "Concrete improvements."},
+        "score": {"type": "integer", "description": "0-100 quality score."},
+        "approved": {"type": "boolean", "description": "True only when no material problems remain."},
+    },
+    "required": ["summary", "approved"],
+}
+
+
+# Named schema registry: lets SKILL.md frontmatter reference a terminal/spawn
+# schema by name (e.g. `terminal_schema: PLAN_SCHEMA`) instead of inlining the
+# big JSON in YAML. The schemas stay typed and reusable here in Python.
+SCHEMA_REGISTRY: dict[str, dict[str, Any]] = {
+    "PLAN_SCHEMA": PLAN_SCHEMA,
+    "EVALUATION_SCHEMA": EVALUATION_SCHEMA,
 }
 
 
@@ -507,32 +672,6 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "generate_training_plan",
-            "description": (
-                "Generate a fresh, science-based 2-week training plan via the plan "
-                "sub-agent (which researches the web and has the draft independently "
-                "evaluated). Use when the user asks for a plan and there is none yet. "
-                "Confirm scope with the user FIRST (it takes a while). Runs autonomously "
-                "and creates a DRAFT the user can then review and adjust with you."
-            ),
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "regenerate_plan",
-            "description": (
-                "Throw away the current draft and generate a brand new 2-week plan "
-                "from scratch. Use only when the user wants a fundamentally different "
-                "plan, not for small tweaks (use update_plan for those)."
-            ),
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_current_plan",
             "description": (
                 "Read the current training plan (draft or active) so you can discuss "
@@ -549,7 +688,8 @@ TOOL_SCHEMAS = [
                 "Apply the user's requested changes to the plan. You pass the FULL "
                 "updated weeks array (read it first with get_current_plan, modify what "
                 "the user wants, pass the whole thing back). Use for tweaks like moving "
-                "a session, changing a duration, swapping a sport. Keep the structure valid."
+                "a session, retargeting a step, swapping a sport. Each session uses the "
+                "universal grammar (sport/intent/headline/groups->steps); keep it valid."
             ),
             "parameters": {
                 "type": "object",
