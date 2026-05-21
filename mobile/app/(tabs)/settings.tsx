@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Activity,
   Bell,
+  ChevronRight,
   Globe,
   HelpCircle,
+  HeartPulse,
   Heart,
   Lock,
   LogOut,
@@ -24,6 +26,7 @@ import { GarminConnectModal } from '@/components/profile/GarminConnectModal';
 import { useGarmin } from '@/lib/use-garmin';
 import { apiPost, ApiError } from '@/lib/api';
 import { signOut, useAuth } from '@/lib/use-auth';
+import { Colors } from '@/lib/colors';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -152,24 +155,47 @@ export default function SettingsScreen() {
           </Card>
 
           {garminConnected && (
-            <View className="mt-3 flex-row items-center justify-between bg-surface rounded-2xl px-4 py-3">
-              <View className="flex-1 mr-3">
-                <Text className="text-text-primary text-sm font-medium">
-                  {status?.activity_count ?? 0} Aktivitaeten in der DB
-                </Text>
-                <Text className="text-text-muted text-xs mt-0.5">
-                  {formatRelative(status?.last_sync_at ?? null) ?? 'Noch nie synchronisiert'}
-                </Text>
+            <View className="mt-3 flex-row items-center justify-between bg-surface rounded-2xl px-2 py-1">
+              <Pressable
+                onPress={() => router.push('/activities')}
+                className="flex-1 flex-row items-center px-2 py-2"
+                accessibilityRole="button"
+                accessibilityLabel="Aktivitaeten ansehen"
+              >
+                <View className="flex-1">
+                  <Text className="text-text-primary text-sm font-medium">
+                    {status?.activity_count ?? 0} Aktivitaeten in der DB
+                  </Text>
+                  <Text className="text-text-muted text-xs mt-0.5">
+                    {formatRelative(status?.last_sync_at ?? null) ?? 'Noch nie synchronisiert'}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={Colors.textMuted} />
+              </Pressable>
+              <View className="px-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={RefreshCw}
+                  label={isSyncing ? 'Synct...' : 'Sync'}
+                  onPress={handleSync}
+                  loading={isSyncing}
+                  disabled={isSyncing}
+                />
               </View>
-              <Button
-                variant="primary"
-                size="sm"
-                icon={RefreshCw}
-                label={isSyncing ? 'Synct...' : 'Sync'}
-                onPress={handleSync}
-                loading={isSyncing}
-                disabled={isSyncing}
-              />
+            </View>
+          )}
+
+          {garminConnected && (
+            <View className="mt-3">
+              <Card variant="standard" className="p-0 overflow-hidden">
+                <SettingsRow
+                  icon={HeartPulse}
+                  label="Gesundheitsdaten"
+                  onPress={() => router.push('/health')}
+                  isLast
+                />
+              </Card>
             </View>
           )}
         </View>
