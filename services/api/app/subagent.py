@@ -17,6 +17,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -27,6 +28,17 @@ logger = logging.getLogger(__name__)
 # A tool handler may be sync or async. It receives parsed args, returns a dict.
 ToolHandler = Callable[..., dict[str, Any] | Awaitable[dict[str, Any]]]
 EventSink = Callable[[str, dict[str, Any]], Awaitable[None]]
+
+
+class EarlyTerminal(Exception):
+    """Raised by a tool handler to end the whole sub-agent run immediately with
+    a given result, bypassing the model's own terminal-tool call. Used by the
+    eval round cap to submit the best draft directly instead of paying for
+    another full plan generation."""
+
+    def __init__(self, result: dict[str, Any]):
+        super().__init__("early terminal")
+        self.result = result
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -45,9 +57,13 @@ async def run_subagent(
     terminal_tool: str | None = None,
     max_turns: int = 8,
     on_event: EventSink | None = None,
+    label: str = "agent",
 ) -> dict[str, Any]:
     """Run an autonomous sub-agent. Returns the terminal tool's args, or
     ``{"text": <final assistant text>}`` if it ended without calling it.
+
+    Emits a structured trace to the logger (per-turn LLM latency, each tool
+    call, total time) so token-heavy runs are observable in the server logs.
     """
 
     async def emit(event_type: str, payload: dict[str, Any]) -> None:
@@ -60,8 +76,11 @@ async def run_subagent(
     ]
 
     last_text = ""  # best-effort: last assistant prose, surfaced on max_turns
+    t_start = time.monotonic()
+    logger.info("trace[%s] start model=%s task=%dch", label, model, len(task))
 
     for _turn in range(max_turns):
+        t_turn = time.monotonic()
         try:
             response = await litellm.acompletion(
                 model=model,
@@ -71,8 +90,9 @@ async def run_subagent(
                 stream=False,
             )
         except Exception as exc:
-            logger.exception("sub-agent completion failed")
+            logger.exception("trace[%s] completion failed", label)
             return {"error": f"sub-agent LLM error: {exc}"}
+        llm_dt = time.monotonic() - t_turn
 
         # Providers can return a response with no choices (safety filter, token
         # cap, transient empty candidates - seen with Gemini). Never index
@@ -87,11 +107,24 @@ async def run_subagent(
 
         message = choices[0].message
         tool_calls = getattr(message, "tool_calls", None) or []
+        logger.info(
+            "trace[%s] turn %d: llm %.1fs, %d tool_call(s)",
+            label,
+            _turn + 1,
+            llm_dt,
+            len(tool_calls),
+        )
 
         if message.content:
             last_text = message.content
 
         if not tool_calls:
+            logger.info(
+                "trace[%s] done: text-only, %d turns, %.1fs total",
+                label,
+                _turn + 1,
+                time.monotonic() - t_start,
+            )
             return {"text": message.content or ""}
 
         # Record the assistant turn (content + the tool calls it requested).
@@ -125,21 +158,48 @@ async def run_subagent(
             if terminal_tool and name == terminal_tool:
                 # The terminal tool's arguments ARE the result. Stop here.
                 await emit("tool_result", {"name": name, "preview": "submitted"})
+                logger.info(
+                    "trace[%s] done: %s submitted, %d turns, %.1fs total",
+                    label,
+                    name,
+                    _turn + 1,
+                    time.monotonic() - t_start,
+                )
                 return args
 
             handler = registry.get(name)
+            t_tool = time.monotonic()
             if handler is None:
                 result: dict[str, Any] = {"error": f"unknown tool: {name}"}
             else:
                 try:
                     result = await _maybe_await(handler(**args))
+                except EarlyTerminal as term:
+                    # A handler asked to end the run now with its result (eval
+                    # cap -> submit the best draft, no extra generation).
+                    logger.info(
+                        "trace[%s] early-terminal via %s, %d turns, %.1fs total",
+                        label,
+                        name,
+                        _turn + 1,
+                        time.monotonic() - t_start,
+                    )
+                    return term.result
                 except TypeError as exc:
                     result = {"error": f"bad args for {name}: {exc}"}
                 except Exception as exc:
-                    logger.exception("sub-agent tool %s failed", name)
+                    logger.exception("trace[%s] tool %s crashed", label, name)
                     result = {"error": f"tool {name} crashed: {exc}"}
 
-            await emit("tool_result", {"name": name, "preview": _short(result)})
+            preview = _short(result)
+            logger.info(
+                "trace[%s]   %s -> %s (%.1fs)",
+                label,
+                name,
+                preview,
+                time.monotonic() - t_tool,
+            )
+            await emit("tool_result", {"name": name, "preview": preview})
 
             history.append(
                 {
@@ -152,6 +212,9 @@ async def run_subagent(
     # Ran out of turns without calling the terminal tool. Surface the last
     # assistant prose so the caller has something usable to log/show rather
     # than a bare error (best-effort, ADR agent-architecture decision 2).
+    logger.warning(
+        "trace[%s] hit max_turns (%d), %.1fs total", label, max_turns, time.monotonic() - t_start
+    )
     result: dict[str, Any] = {
         "error": f"sub-agent hit max_turns ({max_turns}) without finishing"
     }

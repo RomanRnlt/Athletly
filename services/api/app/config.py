@@ -47,7 +47,9 @@ def load_settings() -> Settings:
             os.getenv("ATHLETLY_CHAT_MODEL", "anthropic/claude-sonnet-4-5"),
         ),
         plan_model=_normalize_model(
-            os.getenv("ATHLETLY_PLAN_MODEL", "anthropic/claude-opus-4-7"),
+            # Sonnet by default: it produces clean grammar plans and is far
+            # faster + cheaper than Opus for this heavy structured-output loop.
+            os.getenv("ATHLETLY_PLAN_MODEL", "anthropic/claude-sonnet-4-5"),
         ),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY") or None,
         gemini_api_key=os.getenv("GEMINI_API_KEY") or None,

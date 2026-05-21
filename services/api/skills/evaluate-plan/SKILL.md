@@ -15,7 +15,7 @@ metadata:
     terminal_description: Submit your verdict on the plan. Ends your evaluation.
     output_kind: ephemeral
     max_turns: 10
-    round_cap: 3
+    round_cap: 1
     spawn_tool_name: evaluate_plan
     spawn_description: >
       Send a draft plan to the independent evaluator. Returns {approved, score,

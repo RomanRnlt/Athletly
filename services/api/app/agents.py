@@ -25,7 +25,7 @@ from typing import Any
 from . import tools as tools_mod
 from .config import settings
 from .skills import ParsedSkill, get_skill, load_skill, scan_skills
-from .subagent import run_subagent
+from .subagent import EarlyTerminal, run_subagent
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,7 @@ class AgentSpec:
     spawn_tool_name: str | None = None
     spawn_description: str = ""
     spawn_input_schema: dict[str, Any] | None = None
+    spawn_arg: str | None = None  # the single arg name of the spawn tool
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +131,7 @@ def _spec_from_skill(skill: ParsedSkill) -> AgentSpec | None:
         spawn_tool_name=spawn_tool_name,
         spawn_description=str(meta.get("spawn_description", "")).strip(),
         spawn_input_schema=spawn_input_schema,
+        spawn_arg=spawn_arg,
     )
 
 
@@ -305,11 +307,17 @@ def _make_spawn_handler(
         state["rounds"] += 1
         if child.round_cap is not None and state["rounds"] > child.round_cap:
             logger.info(
-                "spawn cap: %s reached %d rounds, forcing best-effort submit",
+                "spawn cap: %s reached %d rounds, submitting best draft directly",
                 child.name,
                 child.round_cap,
             )
             await _status(f"{child.name}: Cap erreicht, bester Entwurf wird genommen")
+            # The artifact passed to this spawn tool IS the parent's deliverable
+            # (evaluate_plan(plan=...) -> the plan). End the parent run with it
+            # directly instead of paying for another full generation + submit.
+            payload = args.get(child.spawn_arg) if child.spawn_arg else None
+            if isinstance(payload, dict):
+                raise EarlyTerminal(payload)
             return {
                 "approved": True,
                 "forced": True,
@@ -377,6 +385,7 @@ async def spawn(
         terminal_tool=spec.terminal_tool,
         max_turns=spec.max_turns,
         on_event=sink,
+        label=f"{spec.name}@{_depth}",
     )
 
     if spec.validator and isinstance(result, dict) and "error" not in result:
