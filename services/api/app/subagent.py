@@ -14,6 +14,7 @@ run_subagent again.
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 import logging
@@ -81,17 +82,41 @@ async def run_subagent(
 
     for _turn in range(max_turns):
         t_turn = time.monotonic()
-        try:
-            response = await litellm.acompletion(
-                model=model,
-                messages=history,
-                tools=tools,
-                tool_choice="auto",
-                stream=False,
-            )
-        except Exception as exc:
-            logger.exception("trace[%s] completion failed", label)
-            return {"error": f"sub-agent LLM error: {exc}"}
+        # One retry on transient timeouts / connection errors. Anthropic+litellm
+        # occasionally stall a single completion (seen 1800s+ in the wild); a
+        # fresh request usually completes fast. Non-transient errors fail fast.
+        response = None
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                response = await litellm.acompletion(
+                    model=model,
+                    messages=history,
+                    tools=tools,
+                    tool_choice="auto",
+                    stream=False,
+                    timeout=600,
+                )
+                break
+            except Exception as exc:
+                last_exc = exc
+                transient = (
+                    "Timeout" in type(exc).__name__
+                    or "Connection" in type(exc).__name__
+                )
+                if attempt == 0 and transient:
+                    logger.warning(
+                        "trace[%s] transient %s on attempt 1, retrying once",
+                        label,
+                        type(exc).__name__,
+                    )
+                    await asyncio.sleep(2)
+                    continue
+                logger.exception("trace[%s] completion failed", label)
+                return {"error": f"sub-agent LLM error: {exc}"}
+        if response is None:
+            logger.warning("trace[%s] all retries failed: %s", label, last_exc)
+            return {"error": f"sub-agent LLM error after retry: {last_exc}"}
         llm_dt = time.monotonic() - t_turn
 
         # Providers can return a response with no choices (safety filter, token

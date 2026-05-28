@@ -147,17 +147,39 @@ async def score_plan(
         {"role": "system", "content": _system_prompt()},
         {"role": "user", "content": _user_prompt(plan, fixture)},
     ]
-    try:
-        response = await litellm.acompletion(
-            model=chosen,
-            messages=messages,
-            tools=[_SCORE_TOOL],
-            tool_choice={"type": "function", "function": {"name": "submit_score"}},
-            stream=False,
-        )
-    except Exception as exc:
-        logger.exception("judge[%s] LLM call failed", chosen)
-        return {"error": f"judge LLM error: {exc}", "model": chosen}
+    # One retry on transient timeouts (same pattern as subagent.run_subagent).
+    import asyncio as _asyncio
+    response = None
+    last_exc: Exception | None = None
+    for attempt in range(2):
+        try:
+            response = await litellm.acompletion(
+                model=chosen,
+                messages=messages,
+                tools=[_SCORE_TOOL],
+                tool_choice={"type": "function", "function": {"name": "submit_score"}},
+                stream=False,
+                timeout=300,
+            )
+            break
+        except Exception as exc:
+            last_exc = exc
+            transient = (
+                "Timeout" in type(exc).__name__
+                or "Connection" in type(exc).__name__
+            )
+            if attempt == 0 and transient:
+                logger.warning(
+                    "judge[%s] transient %s on attempt 1, retrying once",
+                    chosen,
+                    type(exc).__name__,
+                )
+                await _asyncio.sleep(2)
+                continue
+            logger.exception("judge[%s] LLM call failed", chosen)
+            return {"error": f"judge LLM error: {exc}", "model": chosen}
+    if response is None:
+        return {"error": f"judge LLM error after retry: {last_exc}", "model": chosen}
 
     choices = getattr(response, "choices", None) or []
     if not choices:
