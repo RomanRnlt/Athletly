@@ -197,6 +197,9 @@ def _print_fixture_summary(report: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
+MAX_CONCURRENCY = 3
+
+
 async def _run_all(fixture_ids: list[str], *, verbose: bool) -> dict[str, Any]:
     if fixture_ids:
         selected: list[Fixture] = []
@@ -210,9 +213,19 @@ async def _run_all(fixture_ids: list[str], *, verbose: bool) -> dict[str, Any]:
 
     started_at = datetime.now(timezone.utc).isoformat()
     started = time.monotonic()
-    fixture_reports: list[dict[str, Any]] = []
-    for fx in selected:
-        fixture_reports.append(await _run_one(fx, verbose=verbose))
+    # Run up to MAX_CONCURRENCY fixtures in parallel (each is its own mocked
+    # account + independent agent run). Sequential was ~60 min for 6 fixtures
+    # and got stuck on transient Anthropic stalls; concurrency caps the wall
+    # time and isolates one slow fixture from the rest.
+    sem = asyncio.Semaphore(MAX_CONCURRENCY)
+
+    async def _bounded(fx: Fixture) -> dict[str, Any]:
+        async with sem:
+            return await _run_one(fx, verbose=verbose)
+
+    fixture_reports = await asyncio.gather(*[_bounded(fx) for fx in selected])
+    # Preserve fixture order matching `selected` (gather preserves arg order).
+    fixture_reports = list(fixture_reports)
     finished_at = datetime.now(timezone.utc).isoformat()
     total_elapsed = round(time.monotonic() - started, 2)
 

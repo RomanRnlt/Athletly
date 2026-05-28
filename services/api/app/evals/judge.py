@@ -159,7 +159,7 @@ async def score_plan(
                 tools=[_SCORE_TOOL],
                 tool_choice={"type": "function", "function": {"name": "submit_score"}},
                 stream=False,
-                timeout=300,
+                timeout=240,
             )
             break
         except Exception as exc:

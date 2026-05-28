@@ -95,7 +95,7 @@ async def run_subagent(
                     tools=tools,
                     tool_choice="auto",
                     stream=False,
-                    timeout=600,
+                    timeout=240,
                 )
                 break
             except Exception as exc:
