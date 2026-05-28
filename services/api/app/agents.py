@@ -281,6 +281,26 @@ def _data_registry(account_id: str, names: tuple[str, ...]) -> dict[str, Any]:
     return registry
 
 
+def _derive_binding_approval(result: dict[str, Any]) -> dict[str, Any]:
+    """If the spawn result has structured issues with `severity`, derive a
+    binding `approved` from the blocking count (overriding the model's own
+    boolean). Prevents the perfectionist-evaluator trap where nothing ever
+    passes. Backward-compatible: if issues are missing or still legacy strings,
+    the result is returned unchanged."""
+    if not isinstance(result, dict):
+        return result
+    issues = result.get("issues") or []
+    if not issues or not all(isinstance(i, dict) and "severity" in i for i in issues):
+        return result
+    blocking = [i for i in issues if i.get("severity") == "blocking"]
+    return {
+        **result,
+        "approved": len(blocking) == 0,
+        "blocking_count": len(blocking),
+        "minor_count": len(issues) - len(blocking),
+    }
+
+
 def _make_spawn_handler(
     child: AgentSpec,
     account_id: str,
@@ -332,7 +352,8 @@ def _make_spawn_handler(
             }
         await _status(f"{child.name} laeuft")
         task = _SPAWN_TASK_PREFIX + json.dumps(args, ensure_ascii=False)
-        return await spawn(child.name, task, account_id, on_event, depth)
+        result = await spawn(child.name, task, account_id, on_event, depth)
+        return _derive_binding_approval(result)
 
     return handler
 

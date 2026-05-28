@@ -399,22 +399,62 @@ PLAN_SCHEMA: dict[str, Any] = {
     "required": ["rationale", "weeks"],
 }
 
-# Evaluator verdict. summary/issues/suggestions/score come BEFORE the boolean
-# (reasoning before conclusion); only summary + approved are required.
+# Evaluator verdict. summary first (reasoning before conclusion), then issues
+# tagged with severity. The system derives the binding `approved` from the
+# blocking count, NOT from the model's own boolean - that avoids the
+# perfectionist-evaluator trap where nothing ever passes.
 EVALUATION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "summary": {"type": "string", "description": "One-paragraph verdict, written before the decision."},
+        "summary": {
+            "type": "string",
+            "description": "One-paragraph verdict, written before listing issues.",
+        },
         "issues": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "Concrete, actionable problems (name the day + what is wrong).",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "severity": {
+                        "type": "string",
+                        "enum": ["blocking", "minor"],
+                        "description": (
+                            "blocking = must fix before athlete sees the plan "
+                            "(safety, grammar/structure violation, ignored hard "
+                            "constraint, unsafe progression jump, goal mismatch). "
+                            "minor = nice-to-have polish that does NOT gate."
+                        ),
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Concrete: name the day + what is wrong + why.",
+                    },
+                },
+                "required": ["severity", "text"],
+            },
+            "description": (
+                "Concrete issues, each tagged with severity. Approval is "
+                "computed from blocking count, not from your `approved` field."
+            ),
         },
-        "suggestions": {"type": "array", "items": {"type": "string"}, "description": "Concrete improvements."},
-        "score": {"type": "integer", "description": "0-100 quality score."},
-        "approved": {"type": "boolean", "description": "True only when no material problems remain."},
+        "suggestions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional polish ideas, not gating.",
+        },
+        "score": {
+            "type": "integer",
+            "description": "Your 0-100 quality estimate (not gating).",
+        },
+        "approved": {
+            "type": "boolean",
+            "description": (
+                "Your gut verdict. The binding approval is computed by the "
+                "system from blocking issues; this field is advisory."
+            ),
+        },
     },
-    "required": ["summary", "approved"],
+    "required": ["summary", "issues"],
 }
 
 
