@@ -4,7 +4,7 @@ description: >
   Use when the user needs a fresh 2-week training plan built from scratch.
   Researches the training science, drafts it in the universal session grammar,
   has it independently evaluated, and saves it as a draft for the user to review.
-allowed-tools: read_athlete_profile get_weekly_load search_activities get_daily_metrics web_search
+allowed-tools: read_athlete_profile get_athlete_state get_weekly_load search_activities get_daily_metrics web_search
 metadata:
   athletly:
     activation: spawn
@@ -41,6 +41,11 @@ preferences. Not a generic template.
   <step priority="1">
     Build a complete picture of the athlete first. Call:
     - read_athlete_profile (goal, sport roles, non-negotiables, history, coaching prefs)
+    - get_athlete_state (objective fitness snapshot from real Garmin data: 28d
+      volume vs 4-week-avg, ACWR with status, sport frequency, typical paces +
+      HR per sport, recovery baseline with trends, longest recent session - use
+      this to ground the plan in actual current fitness, not just the
+      self-reported profile)
     - get_weekly_load (this week vs last - current volume + intensity distribution)
     - search_activities (last 30-60 days, to see real sessions, frequency, sports)
     - get_daily_metrics (recovery, HRV, sleep, resting HR trends)

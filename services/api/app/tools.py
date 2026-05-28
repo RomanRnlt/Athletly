@@ -127,6 +127,12 @@ def get_daily_metrics(account_id: str, days: int = 7) -> dict[str, Any]:
     return {"days_requested": days, "returned": len(rows), "metrics": rows}
 
 
+def get_athlete_state(account_id: str) -> dict[str, Any]:
+    from . import athlete_state
+
+    return athlete_state.compute_state(account_id)
+
+
 def get_weekly_load(account_id: str) -> dict[str, Any]:
     now = datetime.now(timezone.utc).date()
     week_start = (now - timedelta(days=now.weekday())).isoformat()
@@ -508,6 +514,7 @@ TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
     "get_activity_details": get_activity_details,
     "get_daily_metrics": get_daily_metrics,
     "get_weekly_load": get_weekly_load,
+    "get_athlete_state": get_athlete_state,
     "read_athlete_profile": read_athlete_profile,
     "update_athlete_section": update_athlete_section,
     "mark_onboarding_complete": mark_onboarding_complete,
@@ -646,6 +653,22 @@ TOOL_SCHEMAS = [
             "description": (
                 "Compare this week vs last week: total sessions, total minutes and km, "
                 "breakdown per sport, intensity split. Use for load and trend questions."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_athlete_state",
+            "description": (
+                "Objektiver Fitness-Snapshot aus den letzten 28 Tagen Aktivitaeten + 14 "
+                "Tagen Daily-Metrics: aktuelles Wochenvolumen vs 4-Wochen-Schnitt, ACWR "
+                "(akut:chronisch, mit Status optimal/spike/low), Sport-Frequenz, "
+                "typische Paces + HF pro Sport, Recovery-Baseline (HRV, RHR, "
+                "Recovery-Score, Schlaf mit Trend), laengste recente Einheit. "
+                "Verwende das, um deinen Plan an die ECHTE aktuelle Fitness anzupassen, "
+                "nicht nur an das Selbstauskunfts-Profil. Nimmt keine Args."
             ),
             "parameters": {"type": "object", "properties": {}},
         },

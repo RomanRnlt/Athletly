@@ -4,7 +4,7 @@ description: >
   Independent evaluator for a drafted training plan. Re-reads the athlete and
   judges the plan against their real data, returning approved + issues. Spawned
   by the plan agent; not user-facing.
-allowed-tools: read_athlete_profile get_weekly_load search_activities get_daily_metrics web_search
+allowed-tools: read_athlete_profile get_athlete_state get_weekly_load search_activities get_daily_metrics web_search
 metadata:
   athletly:
     activation: spawn
