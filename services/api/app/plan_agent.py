@@ -17,7 +17,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from . import agents
+from . import agents, usage
 
 logger = logging.getLogger(__name__)
 
@@ -36,4 +36,7 @@ async def generate_plan(
 ) -> dict[str, Any]:
     """Run the generator agent (which nests the evaluator). Returns the
     submitted plan {rationale, weeks} or {"error": ...}."""
+    # Mark this request as a plan generation so it is charged plan credits, not
+    # chat credits, regardless of how many internal LLM calls the sub-agents make.
+    usage.mark_plan()
     return await agents.spawn("plan", _PLAN_TASK, account_id, on_event)

@@ -6,11 +6,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from . import account, consent, db, garmin, plan_progress, profile
+from . import account, billing, consent, db, garmin, plan_progress, profile, usage
 from .agent import complete_chat, stream_chat
 from .auth import get_account_id
 from .config import settings
@@ -23,6 +23,7 @@ from .schemas import (
     ConsentRequest,
     ConsentStatusResponse,
     DailyMetricDTO,
+    GrandfatherRequest,
     GarminConnectRequest,
     GarminConnectResponse,
     GarminMfaRequest,
@@ -88,6 +89,12 @@ CONSENT_REQUIRED_DETAIL = (
 )
 
 
+CREDITS_EXHAUSTED_DETAIL = (
+    "Dein KI-Kontingent fuer diesen Monat ist aufgebraucht. "
+    "Upgrade auf Pro fuer mehr, oder warte bis zum naechsten Monat."
+)
+
+
 def _require_health_consent(account_id: str) -> None:
     """Block LLM-facing endpoints until the user has consented to health-data
     processing. Defense in depth: the app also gates this in the UI, but the
@@ -95,6 +102,16 @@ def _require_health_consent(account_id: str) -> None:
     """
     if not consent.has_health_consent(account_id):
         raise HTTPException(status_code=403, detail=CONSENT_REQUIRED_DETAIL)
+
+
+def _require_credits(account_id: str) -> None:
+    """Block LLM-facing endpoints when the monthly credit budget is used up.
+
+    Pre-check only; the real cost is charged after the work completes, so a
+    user can overshoot by at most one action (intentional, see usage.is_allowed).
+    """
+    if not usage.is_allowed(account_id):
+        raise HTTPException(status_code=402, detail=CREDITS_EXHAUSTED_DETAIL)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -115,11 +132,15 @@ async def me(account_id: AccountId) -> dict[str, str]:
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, account_id: AccountId) -> ChatResponse:
     _require_health_consent(account_id)
+    _require_credits(account_id)
+    usage.start()
     try:
         content, model_used = await complete_chat(account_id, req.messages, req.model)
     except Exception as exc:
         log.exception("chat failed")
         raise HTTPException(status_code=502, detail=f"LLM error: {exc}") from exc
+    finally:
+        usage.charge(account_id)
 
     return ChatResponse(
         id=str(uuid.uuid4()),
@@ -133,10 +154,15 @@ async def chat(req: ChatRequest, account_id: AccountId) -> ChatResponse:
 async def chat_stream(req: ChatRequest, account_id: AccountId) -> EventSourceResponse:
     """SSE endpoint. Event types: token, tool_call, tool_result, done, error."""
     _require_health_consent(account_id)
+    _require_credits(account_id)
     message_id = str(uuid.uuid4())
     model = req.model or settings.chat_model
 
     async def event_source():
+        # Start the meter inside the generator so it, stream_chat, and the final
+        # charge all share one ContextVar context (sub-agents inherit it).
+        usage.start()
+        charged = False
         try:
             async for event_type, payload in stream_chat(account_id, req.messages, req.model):
                 # Default nesting metadata for coach-origin events. Sub-agent
@@ -146,13 +172,18 @@ async def chat_stream(req: ChatRequest, account_id: AccountId) -> EventSourceRes
                     payload.setdefault("depth", 0)
                     payload.setdefault("agent", "coach")
                 yield {"event": event_type, "data": json.dumps(payload)}
+            summary = usage.charge(account_id)
+            charged = True
             yield {
                 "event": "done",
-                "data": json.dumps({"id": message_id, "model": model}),
+                "data": json.dumps({"id": message_id, "model": model, "usage": summary}),
             }
         except Exception as exc:
             log.exception("stream failed")
             yield {"event": "error", "data": json.dumps({"message": str(exc)})}
+        finally:
+            if not charged:
+                usage.charge(account_id)
 
     return EventSourceResponse(event_source())
 
@@ -346,3 +377,55 @@ async def delete_account(account_id: AccountId) -> dict[str, str]:
             status_code=502, detail=f"Loeschung fehlgeschlagen: {exc}"
         ) from exc
     return {"status": "deleted"}
+
+
+# ---------------------------------------------------------------------------
+# AI usage + subscription billing
+# ---------------------------------------------------------------------------
+
+
+@app.get("/account/usage")
+async def account_usage(account_id: AccountId) -> dict:
+    """Current credit usage + tier for the settings screen."""
+    return usage.summary(account_id)
+
+
+@app.post("/billing/revenuecat/webhook")
+async def revenuecat_webhook(
+    request: Request,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, str]:
+    """Receive RevenueCat subscription events and update the account tier.
+
+    Authenticated via the shared Authorization token configured in RevenueCat.
+    """
+    expected = settings.revenuecat_webhook_token
+    if not expected:
+        raise HTTPException(status_code=503, detail="Webhook not configured")
+    if authorization != expected and authorization != f"Bearer {expected}":
+        raise HTTPException(status_code=401, detail="Invalid webhook token")
+
+    payload = await request.json()
+    try:
+        billing.handle_revenuecat_event(payload)
+    except Exception as exc:
+        log.exception("revenuecat webhook handling failed")
+        raise HTTPException(status_code=400, detail=f"Webhook error: {exc}") from exc
+    return {"status": "ok"}
+
+
+@app.post("/admin/grandfather")
+async def admin_grandfather(
+    body: GrandfatherRequest,
+    x_admin_token: Annotated[str | None, Header()] = None,
+) -> dict:
+    """Grant (or revoke) the unlimited 'grandfather' tier. Admin-only.
+
+    Guarded by the ATHLETLY_ADMIN_TOKEN env via the X-Admin-Token header.
+    """
+    expected = settings.admin_token
+    if not expected or x_admin_token != expected:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if body.revoke:
+        return billing.revoke_grandfather(body.account_id)
+    return billing.grant_grandfather(body.account_id)
