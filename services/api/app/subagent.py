@@ -24,6 +24,8 @@ from typing import Any
 
 import litellm
 
+from . import usage
+
 logger = logging.getLogger(__name__)
 
 # A tool handler may be sync or async. It receives parsed args, returns a dict.
@@ -117,6 +119,7 @@ async def run_subagent(
         if response is None:
             logger.warning("trace[%s] all retries failed: %s", label, last_exc)
             return {"error": f"sub-agent LLM error after retry: {last_exc}"}
+        usage.add_response(response, model)
         llm_dt = time.monotonic() - t_turn
 
         # Providers can return a response with no choices (safety filter, token

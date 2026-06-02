@@ -19,7 +19,7 @@ from typing import Any
 
 import litellm
 
-from . import agents, db, garmin, profile, skills
+from . import agents, db, garmin, profile, skills, usage
 from .config import settings
 from .schemas import ChatMessage
 from .tools import (
@@ -200,9 +200,34 @@ def _system_prompt(account_id: str, messages: list[ChatMessage]) -> str:
     return "\n\n".join(parts)
 
 
-def _to_litellm_messages(account_id: str, messages: list[ChatMessage]) -> list[dict[str, Any]]:
+def _system_message(model: str, content: str) -> dict[str, Any]:
+    """Build the system message, enabling Anthropic prompt caching.
+
+    The system prompt (base instructions + tool-relevant context + athlete
+    profile) is large and stable across a user's turns. Marking it
+    `cache_control: ephemeral` lets Anthropic serve cached input at ~90% lower
+    cost on follow-up turns within the cache window. Non-Anthropic providers
+    get a plain string (the structured block form is Anthropic-specific).
+    """
+    if model.startswith("anthropic/"):
+        return {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": content,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+        }
+    return {"role": "system", "content": content}
+
+
+def _to_litellm_messages(
+    account_id: str, messages: list[ChatMessage], model: str
+) -> list[dict[str, Any]]:
     history: list[dict[str, Any]] = [
-        {"role": "system", "content": _system_prompt(account_id, messages)}
+        _system_message(model, _system_prompt(account_id, messages))
     ]
     for m in messages:
         history.append({"role": m.role, "content": m.content})
@@ -220,7 +245,7 @@ async def stream_chat(
     The 'done' event is NOT emitted here; the FastAPI handler appends it.
     """
     chosen_model = model or settings.chat_model
-    history = _to_litellm_messages(account_id, messages)
+    history = _to_litellm_messages(account_id, messages, chosen_model)
     tools_for_request = _tools_for_model(chosen_model)
 
     for turn in range(MAX_TOOL_TURNS):
@@ -231,6 +256,7 @@ async def stream_chat(
                 tools=tools_for_request,
                 tool_choice="auto",
                 stream=True,
+                stream_options={"include_usage": True},
             )
         except Exception as exc:
             logger.exception("litellm acompletion failed")
@@ -242,6 +268,9 @@ async def stream_chat(
         finish_reason: str | None = None
 
         async for chunk in response:
+            # The final chunk (include_usage) carries token usage but no choices.
+            if getattr(chunk, "usage", None) is not None:
+                usage.add_response(chunk, chosen_model)
             choices = getattr(chunk, "choices", None)
             if not choices:
                 continue
@@ -490,11 +519,12 @@ async def complete_chat(
 ) -> tuple[str, str]:
     """Non-streaming variant. No tool calling here, kept for /chat endpoint."""
     chosen_model = model or settings.chat_model
-    history = _to_litellm_messages(account_id, messages)
+    history = _to_litellm_messages(account_id, messages, chosen_model)
     response = await litellm.acompletion(
         model=chosen_model,
         messages=history,
         stream=False,
     )
+    usage.add_response(response, chosen_model)
     content = response.choices[0].message.content or ""
     return content, chosen_model

@@ -32,6 +32,14 @@ class Settings:
     supabase_url: str | None
     supabase_anon_key: str | None
     supabase_service_role_key: str | None
+    # AI usage metering. Credits are the user-facing unit; tokens/cost are
+    # logged separately for observability. All tunable without a code change.
+    credit_cost_chat: int
+    credit_cost_plan: int
+    credits_free: int
+    credits_pro: int
+    revenuecat_webhook_token: str | None
+    admin_token: str | None
 
 
 def _parse_origins(raw: str) -> list[str]:
@@ -60,6 +68,12 @@ def load_settings() -> Settings:
         supabase_url=os.getenv("SUPABASE_URL") or None,
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY") or None,
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or None,
+        credit_cost_chat=int(os.getenv("ATHLETLY_CREDIT_COST_CHAT", "1")),
+        credit_cost_plan=int(os.getenv("ATHLETLY_CREDIT_COST_PLAN", "8")),
+        credits_free=int(os.getenv("ATHLETLY_CREDITS_FREE", "40")),
+        credits_pro=int(os.getenv("ATHLETLY_CREDITS_PRO", "1000")),
+        revenuecat_webhook_token=os.getenv("REVENUECAT_WEBHOOK_TOKEN") or None,
+        admin_token=os.getenv("ATHLETLY_ADMIN_TOKEN") or None,
     )
 
 

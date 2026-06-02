@@ -156,3 +156,8 @@ class ConsentStatusResponse(BaseModel):
 
 class ConsentRequest(BaseModel):
     granted: bool
+
+
+class GrandfatherRequest(BaseModel):
+    account_id: str = Field(min_length=1)
+    revoke: bool = False
