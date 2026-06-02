@@ -19,7 +19,6 @@ import { Colors } from '@/lib/colors';
 // Shown when RevenueCat has no live offering yet (e.g. Expo Go or store
 // products not configured). The real prices come from RevenueCat once set up.
 const FALLBACK_MONTHLY = '9,99 EUR';
-const FALLBACK_ANNUAL = '69,99 EUR';
 
 const BENEFITS = [
   'Deutlich mehr KI-Coaching pro Monat',
@@ -101,7 +100,6 @@ export default function PaywallScreen() {
   };
 
   const monthlyPrice = offering?.monthlyPriceString ?? FALLBACK_MONTHLY;
-  const annualPrice = offering?.annualPriceString ?? FALLBACK_ANNUAL;
 
   return (
     <View className="flex-1 bg-background">
@@ -152,16 +150,9 @@ export default function PaywallScreen() {
             <Button
               variant="primary"
               size="lg"
-              label={`Jaehrlich - ${annualPrice}`}
-              onPress={() => buy(offering?.annualPackage, annualPrice)}
-              loading={loading}
-              disabled={loading}
-            />
-            <Button
-              variant="secondary"
-              size="lg"
-              label={`Monatlich - ${monthlyPrice}`}
+              label={`Pro - ${monthlyPrice} / Monat`}
               onPress={() => buy(offering?.monthlyPackage, monthlyPrice)}
+              loading={loading}
               disabled={loading}
             />
             <Button

@@ -1,4 +1,5 @@
 import '../global.css';
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -6,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/use-auth';
 import { ConsentProvider, useConsent } from '@/lib/consent-context';
+import { configurePurchases } from '@/lib/purchases';
 import { Colors } from '@/lib/colors';
 
 function Splash() {
@@ -56,6 +58,14 @@ function RoutingGate({
 
 function AuthGate() {
   const { session, isLoading } = useAuth();
+
+  // Configure RevenueCat with the signed-in user's id as the app_user_id, so
+  // purchases + the billing webhook map to this account. No-op until the
+  // native module + SDK keys are present (see lib/purchases.ts).
+  const accountId = session?.user?.id;
+  useEffect(() => {
+    if (accountId) configurePurchases(accountId);
+  }, [accountId]);
 
   if (isLoading) return <Splash />;
 
