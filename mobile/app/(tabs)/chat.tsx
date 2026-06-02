@@ -1,12 +1,34 @@
 import React, { useMemo } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, Text } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, Pressable, Text } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Crown } from 'lucide-react-native';
 import { GradientHeader } from '@/components/ui/GradientHeader';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { OnboardingBar } from '@/components/chat/OnboardingBar';
 import { useChat } from '@/lib/use-chat';
 import { useAthleteProfile } from '@/lib/use-profile';
+import { useUsage } from '@/lib/use-usage';
 import { Colors } from '@/lib/colors';
+
+function CreditLimitBanner({ onUpgrade }: { onUpgrade: () => void }) {
+  return (
+    <Pressable
+      onPress={onUpgrade}
+      className="mx-4 mb-2 px-4 py-3 rounded-2xl bg-primary-light flex-row items-center gap-3"
+      accessibilityRole="button"
+      accessibilityLabel="Auf Pro upgraden"
+    >
+      <Crown size={18} color={Colors.primary} />
+      <View className="flex-1">
+        <Text className="text-text-primary text-sm font-semibold">KI-Limit erreicht</Text>
+        <Text className="text-text-secondary text-xs mt-0.5">
+          Dein Kontingent ist aufgebraucht. Tippe fuer Upgrade auf Pro.
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
 
 function StatusDot({ online }: { online: boolean }) {
   return (
@@ -45,7 +67,9 @@ function subtitleFor(
 }
 
 export default function ChatScreen() {
+  const router = useRouter();
   const profile = useAthleteProfile();
+  const { exhausted, refresh: refreshUsage } = useUsage();
   const {
     messages,
     isStreaming,
@@ -59,6 +83,7 @@ export default function ChatScreen() {
   } = useChat({
     onStreamComplete: () => {
       profile.refresh();
+      refreshUsage();
     },
   });
 
@@ -128,7 +153,9 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <ChatInput onSend={sendMessage} disabled={isStreaming} />
+        {exhausted && <CreditLimitBanner onUpgrade={() => router.push('/paywall')} />}
+
+        <ChatInput onSend={sendMessage} disabled={isStreaming || exhausted} />
       </View>
     </KeyboardAvoidingView>
   );

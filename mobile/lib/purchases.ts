@@ -39,15 +39,20 @@ export function isPurchasesAvailable(): boolean {
   return !!load() && !!key;
 }
 
+let configuredFor: string | null = null;
+
 /** Configure the SDK with the signed-in user's account id as the RC app user id. */
 export async function configurePurchases(accountId: string): Promise<void> {
   const Purchases = load();
   if (!Purchases) return;
   const key = Platform.OS === 'ios' ? RC_IOS_KEY : RC_ANDROID_KEY;
   if (!key) return;
+  // Avoid reconfiguring for the same user (RC warns on double-configure).
+  if (configured && configuredFor === accountId) return;
   try {
     await Purchases.configure({ apiKey: key, appUserID: accountId });
     configured = true;
+    configuredFor = accountId;
   } catch {
     configured = false;
   }
