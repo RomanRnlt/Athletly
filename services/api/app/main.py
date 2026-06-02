@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from . import db, garmin, plan_progress, profile
+from . import account, consent, db, garmin, plan_progress, profile
 from .agent import complete_chat, stream_chat
 from .auth import get_account_id
 from .config import settings
@@ -20,6 +20,8 @@ from .schemas import (
     ActivityListResponse,
     ChatRequest,
     ChatResponse,
+    ConsentRequest,
+    ConsentStatusResponse,
     DailyMetricDTO,
     GarminConnectRequest,
     GarminConnectResponse,
@@ -80,6 +82,20 @@ app.add_middleware(
 
 AccountId = Annotated[str, Depends(get_account_id)]
 
+CONSENT_REQUIRED_DETAIL = (
+    "Einwilligung zur Verarbeitung von Gesundheitsdaten erforderlich. "
+    "Bitte stimme in der App zu, bevor du das Coaching nutzt."
+)
+
+
+def _require_health_consent(account_id: str) -> None:
+    """Block LLM-facing endpoints until the user has consented to health-data
+    processing. Defense in depth: the app also gates this in the UI, but the
+    backend must never send health data to the LLM without a recorded consent.
+    """
+    if not consent.has_health_consent(account_id):
+        raise HTTPException(status_code=403, detail=CONSENT_REQUIRED_DETAIL)
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
@@ -98,6 +114,7 @@ async def me(account_id: AccountId) -> dict[str, str]:
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, account_id: AccountId) -> ChatResponse:
+    _require_health_consent(account_id)
     try:
         content, model_used = await complete_chat(account_id, req.messages, req.model)
     except Exception as exc:
@@ -115,6 +132,7 @@ async def chat(req: ChatRequest, account_id: AccountId) -> ChatResponse:
 @app.post("/chat/stream")
 async def chat_stream(req: ChatRequest, account_id: AccountId) -> EventSourceResponse:
     """SSE endpoint. Event types: token, tool_call, tool_result, done, error."""
+    _require_health_consent(account_id)
     message_id = str(uuid.uuid4())
     model = req.model or settings.chat_model
 
@@ -293,3 +311,38 @@ async def account_reset(account_id: AccountId) -> dict[str, str]:
     profile.reset(account_id)
     log.info("Account reset for %s", account_id)
     return {"status": "reset"}
+
+
+# ---------------------------------------------------------------------------
+# GDPR: consent (Art. 9), data export (Art. 20), erasure (Art. 17)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/account/consent", response_model=ConsentStatusResponse)
+async def get_consent(account_id: AccountId) -> ConsentStatusResponse:
+    return ConsentStatusResponse(**consent.get_status(account_id))
+
+
+@app.post("/account/consent", response_model=ConsentStatusResponse)
+async def set_consent(req: ConsentRequest, account_id: AccountId) -> ConsentStatusResponse:
+    status = consent.record_consent(account_id, granted=req.granted)
+    return ConsentStatusResponse(**status)
+
+
+@app.get("/account/export")
+async def export_account(account_id: AccountId) -> dict:
+    """Portable JSON snapshot of all data held for this account (Art. 20)."""
+    return account.export_data(account_id)
+
+
+@app.delete("/account")
+async def delete_account(account_id: AccountId) -> dict[str, str]:
+    """Irreversibly erase the account and all its data (Art. 17)."""
+    try:
+        account.delete_account(account_id)
+    except Exception as exc:
+        log.exception("account deletion failed")
+        raise HTTPException(
+            status_code=502, detail=f"Loeschung fehlgeschlagen: {exc}"
+        ) from exc
+    return {"status": "deleted"}

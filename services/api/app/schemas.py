@@ -143,3 +143,16 @@ class PlanResponse(BaseModel):
     plan_id: str | None = None
     rationale: str | None = None
     weeks: list[dict[str, object]] = []
+
+
+class ConsentStatusResponse(BaseModel):
+    consent_type: str
+    granted: bool
+    version: str | None = None
+    current_version: str
+    needs_consent: bool
+    updated_at: str | None = None
+
+
+class ConsentRequest(BaseModel):
+    granted: bool
