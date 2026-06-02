@@ -5,6 +5,7 @@ import {
   Activity,
   Bell,
   ChevronRight,
+  Download,
   Globe,
   HelpCircle,
   Heart,
@@ -13,7 +14,9 @@ import {
   Moon,
   RefreshCw,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
+  Trash2,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -25,6 +28,8 @@ import { GarminConnectModal } from '@/components/profile/GarminConnectModal';
 import { useGarmin } from '@/lib/use-garmin';
 import { apiPost, ApiError } from '@/lib/api';
 import { signOut, useAuth } from '@/lib/use-auth';
+import { useConsent } from '@/lib/consent-context';
+import { deleteAccount, exportAccountData } from '@/lib/use-account';
 import { Colors } from '@/lib/colors';
 
 function SectionTitle({ children }: { children: string }) {
@@ -52,7 +57,9 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { status, isSyncing, error, refresh, sync, disconnect } = useGarmin();
+  const { status: consent, setConsent } = useConsent();
   const [modalVisible, setModalVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const handleConnectSuccess = async () => {
     setModalVisible(false);
@@ -101,6 +108,63 @@ export default function SettingsScreen() {
       [
         { text: 'Abbrechen', style: 'cancel' },
         { text: 'Zuruecksetzen', style: 'destructive', onPress: performReset },
+      ],
+    );
+  };
+
+  const handleExport = async () => {
+    setBusy(true);
+    try {
+      await exportAccountData();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Export fehlgeschlagen';
+      Alert.alert('Export fehlgeschlagen', message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleWithdrawConsent = () => {
+    Alert.alert(
+      'Einwilligung widerrufen?',
+      'Ohne Einwilligung kann Athletly deine Gesundheitsdaten nicht mehr verarbeiten und dich nicht coachen. Du wirst zum Einwilligungsbildschirm geleitet.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Widerrufen',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await setConsent(false);
+            } catch {
+              Alert.alert('Fehler', 'Widerruf fehlgeschlagen. Bitte erneut versuchen.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const performDelete = async () => {
+    setBusy(true);
+    try {
+      await deleteAccount();
+      // signOut inside deleteAccount triggers the auth listener -> /login.
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Loeschung fehlgeschlagen';
+      Alert.alert('Loeschung fehlgeschlagen', message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Account endgueltig loeschen?',
+      'Dies loescht deinen Account und ALLE Daten unwiderruflich: Profil, Trainings- und Gesundheitsdaten, Plaene und Garmin-Verbindung. Dies kann nicht rueckgaengig gemacht werden.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        { text: 'Endgueltig loeschen', style: 'destructive', onPress: performDelete },
       ],
     );
   };
@@ -194,10 +258,32 @@ export default function SettingsScreen() {
           </Card>
         </View>
 
+        <SectionTitle>Datenschutz & DSGVO</SectionTitle>
+        <View className="mx-4">
+          <Card variant="standard" className="p-0 overflow-hidden">
+            <SettingsRow
+              icon={ShieldCheck}
+              label="Einwilligung Gesundheitsdaten"
+              value={consent?.granted ? 'Erteilt' : 'Offen'}
+              onPress={consent?.granted ? handleWithdrawConsent : undefined}
+            />
+            <SettingsRow
+              icon={Download}
+              label="Meine Daten exportieren"
+              onPress={busy ? undefined : handleExport}
+            />
+            <SettingsRow
+              icon={Lock}
+              label="Datenschutzerklaerung"
+              onPress={() => {}}
+              isLast
+            />
+          </Card>
+        </View>
+
         <SectionTitle>Account</SectionTitle>
         <View className="mx-4">
           <Card variant="standard" className="p-0 overflow-hidden">
-            <SettingsRow icon={Lock} label="Datenschutz" onPress={() => {}} />
             <SettingsRow icon={HelpCircle} label="Hilfe & Support" onPress={() => {}} />
             <SettingsRow
               icon={RotateCcw}
@@ -214,6 +300,12 @@ export default function SettingsScreen() {
                   { text: 'Abmelden', style: 'destructive', onPress: () => signOut() },
                 ])
               }
+              isDestructive
+            />
+            <SettingsRow
+              icon={Trash2}
+              label="Account loeschen"
+              onPress={busy ? undefined : handleDeleteAccount}
               isDestructive
               isLast
             />

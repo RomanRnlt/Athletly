@@ -3,7 +3,9 @@ import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import type { Session } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/use-auth';
+import { ConsentProvider, useConsent } from '@/lib/consent-context';
 import { Colors } from '@/lib/colors';
 
 function Splash() {
@@ -17,28 +19,59 @@ function Splash() {
   );
 }
 
-function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAuth();
+/**
+ * Decides which top-level destination is allowed given auth + consent state.
+ *
+ * Order of gates:
+ *   1. No session  -> only /login is reachable.
+ *   2. Session but health-data consent missing/outdated -> force /consent.
+ *   3. Session + consent OK -> keep users out of /login and /consent.
+ */
+function RoutingGate({
+  session,
+  children,
+}: {
+  session: Session | null;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
+  const { status, isLoading } = useConsent();
+
+  if (!session) {
+    return pathname === '/login' ? <>{children}</> : <Redirect href="/login" />;
+  }
 
   if (isLoading) return <Splash />;
 
-  if (!session && pathname !== '/login') {
-    return <Redirect href="/login" />;
+  const needsConsent = status?.needsConsent ?? false;
+  if (needsConsent && pathname !== '/consent') {
+    return <Redirect href="/consent" />;
   }
-  if (session && pathname === '/login') {
+  if (!needsConsent && (pathname === '/consent' || pathname === '/login')) {
     return <Redirect href="/(tabs)/plan" />;
   }
 
   return <>{children}</>;
 }
 
+function AuthGate() {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) return <Splash />;
+
+  return (
+    <ConsentProvider enabled={!!session}>
+      <RoutingGate session={session}>
+        <Stack screenOptions={{ headerShown: false }} />
+      </RoutingGate>
+    </ConsentProvider>
+  );
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthGate>
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthGate>
+      <AuthGate />
       <StatusBar style="dark" />
     </SafeAreaProvider>
   );
