@@ -5,6 +5,7 @@ import {
   Activity,
   Bell,
   ChevronRight,
+  Crown,
   Download,
   Globe,
   HelpCircle,
@@ -17,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
+  Zap,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -29,6 +31,7 @@ import { useGarmin } from '@/lib/use-garmin';
 import { apiPost, ApiError } from '@/lib/api';
 import { signOut, useAuth } from '@/lib/use-auth';
 import { useConsent } from '@/lib/consent-context';
+import { useUsage } from '@/lib/use-usage';
 import { deleteAccount, exportAccountData } from '@/lib/use-account';
 import { Colors } from '@/lib/colors';
 
@@ -38,6 +41,12 @@ function SectionTitle({ children }: { children: string }) {
       {children}
     </Text>
   );
+}
+
+function formatResetDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
 }
 
 function formatRelative(iso: string | null): string | null {
@@ -58,6 +67,7 @@ export default function SettingsScreen() {
   const { session } = useAuth();
   const { status, isSyncing, error, refresh, sync, disconnect } = useGarmin();
   const { status: consent, setConsent } = useConsent();
+  const { usage } = useUsage();
   const [modalVisible, setModalVisible] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -256,6 +266,41 @@ export default function SettingsScreen() {
             <SettingsRow icon={Globe} label="Sprache" value="Deutsch" onPress={() => {}} />
             <SettingsRow icon={Moon} label="Erscheinungsbild" value="Hell" onPress={() => {}} isLast />
           </Card>
+        </View>
+
+        <SectionTitle>KI-Nutzung</SectionTitle>
+        <View className="mx-4">
+          <Card variant="standard" className="p-0 overflow-hidden">
+            <SettingsRow
+              icon={Zap}
+              label="KI-Credits"
+              value={
+                usage == null
+                  ? '...'
+                  : usage.limit == null
+                    ? `${usage.used} genutzt`
+                    : `${usage.used} / ${usage.limit}`
+              }
+            />
+            <SettingsRow
+              label="Reset"
+              value={usage ? `am ${formatResetDate(usage.resetsAt)}` : '-'}
+              isLast={usage?.tier === 'pro' || usage?.tier === 'grandfather'}
+            />
+            {usage && usage.tier !== 'pro' && usage.tier !== 'grandfather' && (
+              <SettingsRow
+                icon={Crown}
+                label="Upgrade auf Pro"
+                onPress={() => router.push('/paywall')}
+                isLast
+              />
+            )}
+          </Card>
+          {usage?.tier === 'grandfather' && (
+            <Text className="text-text-muted text-xs px-4 mt-1.5">
+              Unbegrenzter Zugang (Grandfather).
+            </Text>
+          )}
         </View>
 
         <SectionTitle>Datenschutz & DSGVO</SectionTitle>
