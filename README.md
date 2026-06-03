@@ -306,7 +306,7 @@ athletly/                        # npm-workspaces monorepo
 
 ### 1. Clone + install
 ```bash
-git clone https://github.com/RomanRnlt/Athletly.git
+git clone https://github.com/RnltLabs/Athletly.git
 cd Athletly
 npm install                      # installs the web + mobile workspaces
 ```
