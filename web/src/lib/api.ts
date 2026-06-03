@@ -7,7 +7,7 @@
 // format by hand, dispatching the exact same events as the mobile client
 // (token, tool_call, tool_result, status, done, error).
 import { getAccessToken } from './supabase';
-import type { ChatMessage } from '@/types/chat';
+import type { ChatMessage } from '@athletly/shared';
 
 const DEFAULT_API_URL = 'http://localhost:8000';
 

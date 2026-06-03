@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import type { DailyMetric } from '@/lib/use-metrics';
 
 export function fmtHealthDate(iso: string): string {

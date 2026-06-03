@@ -8,7 +8,7 @@ import { Mail, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { GoogleLogo } from '@/components/auth/GoogleLogo';
-import { Colors, BRAND_GRADIENT } from '@/lib/colors';
+import { Colors, BRAND_GRADIENT } from '@athletly/shared';
 import { signInWithEmail, signUpWithEmail } from '@/lib/use-auth';
 import { signInWithApple, signInWithGoogle } from '@/lib/social-auth';
 

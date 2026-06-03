@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import EventSource from 'react-native-sse';
 import { getAccessToken } from './supabase';
-import type { ChatMessage } from '@/types/chat';
+import type { ChatMessage } from '@athletly/shared';
 
 const API_PORT = 8000;
 const LOCALHOST_FALLBACK = `http://localhost:${API_PORT}`;

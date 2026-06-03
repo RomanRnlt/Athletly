@@ -7,8 +7,8 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronDown, ChevronRight, Check, AlertCircle } from 'lucide-react-native';
-import { Colors } from '@/lib/colors';
-import type { ToolStep } from '@/types/chat';
+import { Colors } from '@athletly/shared';
+import type { ToolStep } from '@athletly/shared';
 
 const INDENT_PER_DEPTH = 14;
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import { parseSession } from './plan-grammar';
-import type { WeeklyPlan, DayPlan } from '@/types/plan';
+import type { WeeklyPlan, DayPlan } from '@athletly/shared';
 
 interface RawDay {
   date: string;

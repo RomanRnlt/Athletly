@@ -9,7 +9,7 @@ import { OnboardingBar } from '@/components/chat/OnboardingBar';
 import { useChat } from '@/lib/use-chat';
 import { useAthleteProfile } from '@/lib/use-profile';
 import { useUsage } from '@/lib/use-usage';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 function CreditLimitBanner({ onUpgrade }: { onUpgrade: () => void }) {
   return (

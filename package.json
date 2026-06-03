@@ -1,0 +1,18 @@
+{
+  "name": "athletly",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Athletly monorepo: Next.js web app, Expo mobile app, and shared TS packages. (services/api is a separate Python backend.)",
+  "workspaces": [
+    "mobile",
+    "web",
+    "packages/*"
+  ],
+  "comments": {
+    "devDependencies": "Mobile pulls React 19 which npm would hoist to the repo root, where Next's shared build dep styled-jsx then resolves it instead of the web app's React 18 (dual-React build failure: 'Cannot read properties of null (reading useContext)'). Declaring React 18 at the root pins the hoisted (root) copy to 18 so the web build is self-consistent; mobile's React 19 nests under mobile/node_modules and Metro resolves it there."
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

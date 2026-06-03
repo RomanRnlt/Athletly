@@ -4,10 +4,10 @@
 import React, { useMemo } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportLabel } from '@/lib/sport-icons';
-import type { WeeklyPlan, PlannedSession } from '@/types/plan';
+import type { WeeklyPlan, PlannedSession } from '@athletly/shared';
 
 function formatTotalDuration(minutes: number): string {
   if (minutes <= 0) return '0min';

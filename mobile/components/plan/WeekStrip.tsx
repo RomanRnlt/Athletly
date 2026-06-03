@@ -4,8 +4,8 @@ import Svg, { Circle } from 'react-native-svg';
 import { Moon } from 'lucide-react-native';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon } from '@/lib/sport-icons';
-import { Colors } from '@/lib/colors';
-import type { DayPlan, PlannedSession } from '@/types/plan';
+import { Colors } from '@athletly/shared';
+import type { DayPlan, PlannedSession } from '@athletly/shared';
 
 const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 

@@ -1,0 +1,27 @@
+{
+  "name": "@athletly/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-neutral design tokens and shared API contract types for web + mobile.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tokens": {
+      "types": "./src/tokens.d.ts",
+      "default": "./src/tokens.js"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

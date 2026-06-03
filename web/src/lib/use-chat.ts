@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from './api';
 import type { StatusEvent, ToolCallEvent, ToolResultEvent } from './api';
-import type { ChatMessage, ToolStep, ToolStepStatus } from '@/types/chat';
+import type { ChatMessage, ToolStep, ToolStepStatus } from '@athletly/shared';
 
 interface UseChatOptions {
   initialMessages?: readonly ChatMessage[];

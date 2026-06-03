@@ -3,7 +3,7 @@
 // Web port of mobile/components/profile/SettingsRow.tsx.
 import React, { type ReactNode } from 'react';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface SettingsRowProps {
   icon?: LucideIcon;

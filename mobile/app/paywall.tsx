@@ -14,7 +14,7 @@ import {
   restorePurchases,
   type ProOffering,
 } from '@/lib/purchases';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 // Shown when RevenueCat has no live offering yet (e.g. Expo Go or store
 // products not configured). The real prices come from RevenueCat once set up.

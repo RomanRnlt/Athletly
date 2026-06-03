@@ -7,7 +7,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Calendar, MessageCircle, Settings, type LucideIcon } from 'lucide-react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { useAthleteProfile } from '@/lib/use-profile';
 
 interface TabDef {

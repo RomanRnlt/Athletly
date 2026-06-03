@@ -9,8 +9,8 @@ import { SessionCard } from '@/components/plan/SessionCard';
 import { RestDayCard } from '@/components/plan/RestDayCard';
 import { WeeklySummary } from '@/components/plan/WeeklySummary';
 import { usePlan } from '@/lib/use-plan';
-import { Colors } from '@/lib/colors';
-import type { WeeklyPlan } from '@/types/plan';
+import { Colors } from '@athletly/shared';
+import type { WeeklyPlan } from '@athletly/shared';
 
 const GERMAN_MONTHS = [
   'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, View, Text } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface SettingsRowProps {
   icon?: React.ComponentType<{ size: number; color: string }>;

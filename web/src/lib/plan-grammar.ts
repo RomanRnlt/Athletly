@@ -10,7 +10,7 @@ import type {
   StepRole,
   Target,
   TargetKind,
-} from '@/types/plan';
+} from '@athletly/shared';
 
 const INTENTS: readonly SessionIntent[] = [
   'recovery',

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mic, Send } from 'lucide-react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface ChatInputProps {
   onSend: (text: string) => void;

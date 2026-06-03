@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Calendar, MessageCircle, Settings } from 'lucide-react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { useAthleteProfile } from '@/lib/use-profile';
 
 const TAB_BAR_STYLE = {

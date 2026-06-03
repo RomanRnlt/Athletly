@@ -4,7 +4,7 @@ import { X, Mail, Lock, KeyRound } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { apiPost, ApiError } from '@/lib/api';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface GarminConnectModalProps {
   visible: boolean;

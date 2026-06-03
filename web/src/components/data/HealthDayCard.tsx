@@ -5,7 +5,7 @@
 // health detail page.
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import type { DailyMetric } from '@/lib/use-metrics';
 
 export function fmtHealthDate(iso: string): string {

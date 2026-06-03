@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { GradientHeader } from '@/components/ui/GradientHeader';
 import { Card } from '@/components/ui/Card';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { useAthleteProfile, type ProfileSection } from '@/lib/use-profile';
 
 interface SectionMeta {
