@@ -6,15 +6,13 @@
 import React, { useEffect, useState } from 'react';
 import { Colors } from '@athletly/shared';
 import type { ToolStep } from '@athletly/shared';
+import { useT, type TranslateFn } from '@/i18n';
 
-const AGENT_LABELS: Record<string, string> = {
-  plan: 'Plan-Agent',
-  'evaluate-plan': 'Evaluator',
-};
-
-function agentLabel(agent: string): string | null {
+function agentLabel(t: TranslateFn, agent: string): string | null {
   if (!agent || agent === 'coach') return null;
-  return AGENT_LABELS[agent] ?? agent;
+  if (agent === 'plan') return t('liveActivity.agentPlan');
+  if (agent === 'evaluate-plan') return t('liveActivity.agentEvaluator');
+  return agent;
 }
 
 function formatElapsed(ms: number): string {
@@ -29,7 +27,7 @@ interface Current {
   readonly action: string;
 }
 
-function deriveCurrent(steps: readonly ToolStep[]): Current | null {
+function deriveCurrent(t: TranslateFn, steps: readonly ToolStep[]): Current | null {
   if (steps.length === 0) return null;
   for (let i = steps.length - 1; i >= 0; i -= 1) {
     const s = steps[i];
@@ -38,7 +36,7 @@ function deriveCurrent(steps: readonly ToolStep[]): Current | null {
     }
   }
   const last = steps[steps.length - 1];
-  return { agent: last.agent, action: 'Arbeitet…' };
+  return { agent: last.agent, action: t('liveActivity.working') };
 }
 
 function Spinner() {
@@ -57,6 +55,7 @@ interface LiveActivityProps {
 }
 
 export function LiveActivity({ steps, startedAt }: LiveActivityProps) {
+  const t = useT();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -64,11 +63,11 @@ export function LiveActivity({ steps, startedAt }: LiveActivityProps) {
     return () => clearInterval(id);
   }, []);
 
-  const current = deriveCurrent(steps);
+  const current = deriveCurrent(t, steps);
   if (!current) return null;
 
   const elapsed = startedAt ? formatElapsed(now - startedAt.getTime()) : '';
-  const label = agentLabel(current.agent);
+  const label = agentLabel(t, current.agent);
 
   return (
     <div

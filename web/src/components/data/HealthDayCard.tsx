@@ -8,11 +8,13 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Colors } from '@athletly/shared';
 import type { DailyMetric } from '@/lib/use-metrics';
+import { useI18n, type TranslateFn } from '@/i18n';
+import { formatNumber } from '@/lib/datetime';
 
-export function fmtHealthDate(iso: string): string {
+export function fmtHealthDate(intlLocale: string, iso: string): string {
   const d = new Date(iso + 'T12:00:00');
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'short' });
+  return d.toLocaleDateString(intlLocale, { weekday: 'short', day: '2-digit', month: 'short' });
 }
 
 export function fmtSleepDuration(min: number | null): string | null {
@@ -39,27 +41,32 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function metricChips(m: DailyMetric): { label: string; value: string }[] {
+export function metricChips(
+  t: TranslateFn,
+  intlLocale: string,
+  m: DailyMetric,
+): { label: string; value: string }[] {
   const chips: { label: string; value: string }[] = [];
-  if (m.recovery_score !== null) chips.push({ label: 'Recovery', value: `${m.recovery_score}` });
-  if (m.hrv_avg !== null) chips.push({ label: 'HRV', value: `${Math.round(m.hrv_avg)} ms` });
-  if (m.resting_heart_rate !== null) chips.push({ label: 'Ruhe-HF', value: `${m.resting_heart_rate} bpm` });
+  if (m.recovery_score !== null) chips.push({ label: t('health.recovery'), value: `${m.recovery_score}` });
+  if (m.hrv_avg !== null) chips.push({ label: t('health.hrv'), value: `${Math.round(m.hrv_avg)} ms` });
+  if (m.resting_heart_rate !== null) chips.push({ label: t('health.rhr'), value: `${m.resting_heart_rate} bpm` });
   if (m.body_battery_high !== null) {
     const low = m.body_battery_low !== null ? `-${m.body_battery_low}` : '';
-    chips.push({ label: 'Body Battery', value: `${m.body_battery_high}${low}` });
+    chips.push({ label: t('health.bodyBattery'), value: `${m.body_battery_high}${low}` });
   }
-  if (m.stress_avg !== null) chips.push({ label: 'Stress', value: `${m.stress_avg}` });
-  if (m.spo2_avg !== null) chips.push({ label: 'SpO2', value: `${Math.round(m.spo2_avg)}%` });
-  if (m.respiration_avg !== null) chips.push({ label: 'Atmung', value: `${Math.round(m.respiration_avg)}/min` });
-  if (m.vo2max !== null) chips.push({ label: 'VO2max', value: `${Math.round(m.vo2max)}` });
-  if (m.steps !== null) chips.push({ label: 'Schritte', value: m.steps.toLocaleString('de-DE') });
-  if (m.intensity_minutes !== null) chips.push({ label: 'Intensitaet', value: `${m.intensity_minutes} min` });
+  if (m.stress_avg !== null) chips.push({ label: t('health.stress'), value: `${m.stress_avg}` });
+  if (m.spo2_avg !== null) chips.push({ label: t('health.spo2'), value: `${Math.round(m.spo2_avg)}%` });
+  if (m.respiration_avg !== null) chips.push({ label: t('health.respiration'), value: `${Math.round(m.respiration_avg)}/min` });
+  if (m.vo2max !== null) chips.push({ label: t('health.vo2max'), value: `${Math.round(m.vo2max)}` });
+  if (m.steps !== null) chips.push({ label: t('health.steps'), value: formatNumber(intlLocale, m.steps) });
+  if (m.intensity_minutes !== null) chips.push({ label: t('health.intensity'), value: `${m.intensity_minutes} min` });
   return chips;
 }
 
 export function HealthDayCard({ metric, onPress }: { metric: DailyMetric; onPress?: () => void }) {
+  const { t, intlLocale } = useI18n();
   const sleepDuration = fmtSleepDuration(metric.sleep_duration_minutes);
-  const chips = metricChips(metric);
+  const chips = metricChips(t, intlLocale, metric);
 
   return (
     <button
@@ -69,11 +76,11 @@ export function HealthDayCard({ metric, onPress }: { metric: DailyMetric; onPres
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
     >
       <div className="flex flex-row items-center justify-between mb-3">
-        <p className="text-text-primary text-base font-semibold">{fmtHealthDate(metric.date)}</p>
+        <p className="text-text-primary text-base font-semibold">{fmtHealthDate(intlLocale, metric.date)}</p>
         <div className="flex flex-row items-center gap-1.5">
           {metric.sleep_score !== null && (
             <>
-              <span className="text-text-muted text-xs">Schlaf</span>
+              <span className="text-text-muted text-xs">{t('health.sleep')}</span>
               <span className="text-base font-bold" style={{ color: scoreColor(metric.sleep_score) }}>
                 {metric.sleep_score}
               </span>
@@ -91,7 +98,7 @@ export function HealthDayCard({ metric, onPress }: { metric: DailyMetric; onPres
           ))}
         </div>
       ) : (
-        <p className="text-text-muted text-xs">Keine Werte fuer diesen Tag.</p>
+        <p className="text-text-muted text-xs">{t('health.noValuesDay')}</p>
       )}
     </button>
   );

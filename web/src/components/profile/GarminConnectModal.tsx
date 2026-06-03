@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { apiPost, ApiError } from '@/lib/api';
 import { Colors } from '@athletly/shared';
+import { useT } from '@/i18n';
 
 interface GarminConnectModalProps {
   visible: boolean;
@@ -25,6 +26,7 @@ interface ConnectResponse {
 type Step = 'credentials' | 'mfa';
 
 export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnectModalProps) {
+  const t = useT();
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,7 +53,7 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
   const handleConnect = async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
-      setError('E-Mail und Passwort sind erforderlich.');
+      setError(t('garmin.errorCredentialsRequired'));
       return;
     }
     setError(null);
@@ -71,9 +73,9 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
         reset();
         return;
       }
-      setError('Verbindung fehlgeschlagen.');
+      setError(t('garmin.errorConnectFailed'));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Unbekannter Fehler.');
+      setError(err instanceof ApiError ? err.message : t('common.unknownError'));
     } finally {
       setIsLoading(false);
     }
@@ -82,11 +84,11 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
   const handleMfa = async () => {
     const code = mfaCode.trim();
     if (!code) {
-      setError('Code eingeben.');
+      setError(t('garmin.errorCodeRequired'));
       return;
     }
     if (!stateId) {
-      setError('Login-Session abgelaufen, bitte neu starten.');
+      setError(t('garmin.errorSessionExpired'));
       setStep('credentials');
       return;
     }
@@ -102,9 +104,9 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
         reset();
         return;
       }
-      setError('MFA fehlgeschlagen.');
+      setError(t('garmin.errorMfaFailed'));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Unbekannter Fehler.');
+      setError(err instanceof ApiError ? err.message : t('common.unknownError'));
     } finally {
       setIsLoading(false);
     }
@@ -124,23 +126,21 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
       >
         <div className="flex flex-row items-center justify-between mb-5">
           <p className="text-text-primary text-lg font-semibold">
-            {step === 'credentials' ? 'Garmin Connect' : 'Code eingeben'}
+            {step === 'credentials' ? t('garmin.titleCredentials') : t('garmin.titleMfa')}
           </p>
-          <button type="button" onClick={handleClose} aria-label="Schliessen">
+          <button type="button" onClick={handleClose} aria-label={t('common.close')}>
             <X size={20} color={Colors.textMuted} />
           </button>
         </div>
 
         {step === 'credentials' ? (
           <>
-            <p className="text-text-secondary text-sm mb-4">
-              Melde dich mit deinem Garmin Connect Konto an.
-            </p>
+            <p className="text-text-secondary text-sm mb-4">{t('garmin.credentialsBody')}</p>
             <div className="flex flex-col gap-3 mb-4">
               <Input
-                label="E-Mail"
+                label={t('garmin.emailLabel')}
                 leftIcon={Mail}
-                placeholder="garmin@example.com"
+                placeholder={t('garmin.emailPlaceholder')}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -148,10 +148,10 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
                 autoCorrect={false}
               />
               <Input
-                label="Passwort"
+                label={t('garmin.passwordLabel')}
                 leftIcon={Lock}
                 isPassword
-                placeholder="Passwort"
+                placeholder={t('garmin.passwordPlaceholder')}
                 value={password}
                 onChangeText={setPassword}
                 onSubmit={handleConnect}
@@ -165,7 +165,7 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
             <Button
               variant="primary"
               size="lg"
-              label="Verbinden"
+              label={t('garmin.connect')}
               onPress={handleConnect}
               loading={isLoading}
               disabled={isLoading}
@@ -173,12 +173,10 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
           </>
         ) : (
           <>
-            <p className="text-text-secondary text-sm mb-4">
-              Garmin hat einen Code an dein Geraet oder deine E-Mail geschickt.
-            </p>
+            <p className="text-text-secondary text-sm mb-4">{t('garmin.mfaBody')}</p>
             <div className="flex flex-col gap-3 mb-4">
               <Input
-                label="6-stelliger Code"
+                label={t('garmin.mfaLabel')}
                 leftIcon={KeyRound}
                 placeholder="123456"
                 value={mfaCode}
@@ -197,7 +195,7 @@ export function GarminConnectModal({ visible, onClose, onSuccess }: GarminConnec
             <Button
               variant="primary"
               size="lg"
-              label="Bestaetigen"
+              label={t('garmin.confirm')}
               onPress={handleMfa}
               loading={isLoading}
               disabled={isLoading}

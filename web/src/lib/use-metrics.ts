@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import { DEMO_MODE, DEMO_METRICS } from './demo';
+import { useT } from '@/i18n';
 
 export interface DailyMetric {
   date: string;
@@ -42,6 +43,7 @@ interface UseMetricsReturn {
 }
 
 export function useMetrics(days = 30): UseMetricsReturn {
+  const t = useT();
   const [metrics, setMetrics] = useState<DailyMetric[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +60,11 @@ export function useMetrics(days = 30): UseMetricsReturn {
       const data = await apiGet<MetricsListResponse>(`/metrics?days=${days}`);
       setMetrics(data.metrics);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gesundheitsdaten konnten nicht geladen werden');
+      setError(err instanceof ApiError ? err.message : t('syncedData.loadFailedMetrics'));
     } finally {
       setIsLoading(false);
     }
-  }, [days]);
+  }, [days, t]);
 
   useEffect(() => {
     refresh();

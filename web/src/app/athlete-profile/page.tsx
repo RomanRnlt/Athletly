@@ -18,34 +18,65 @@ import { GradientHeader } from '@/components/ui/GradientHeader';
 import { Card } from '@/components/ui/Card';
 import { Colors } from '@athletly/shared';
 import { useAthleteProfile, type ProfileSection } from '@/lib/use-profile';
+import { useT, type MessageKey, type TranslateFn } from '@/i18n';
 
 interface SectionMeta {
   icon: LucideIcon;
-  hint: string;
+  titleKey: MessageKey;
+  hintKey: MessageKey;
 }
 
+// Section identity is the backend's canonical German section name (the real
+// API returns these). Demo content reuses the same German titles via the
+// athleteProfile.section.*.title keys, so the lookup works in both paths.
 const SECTION_META: Record<string, SectionMeta> = {
-  'Warum ich trainiere': { icon: Target, hint: 'Motivation, Ziele, Identitaet' },
-  'Sportarten & Rollen': { icon: Trophy, hint: 'Disziplinen, Wettkaempfe, Rollen' },
-  'Nicht verhandelbar (Leben & Kontext)': { icon: Shield, hint: 'Familie, Job, Schlaf, harte Constraints' },
-  'Wie ich auf Belastung reagiere': { icon: HeartPulse, hint: 'Erholungsmuster, Verletzungen, Sensibilitaet' },
-  'Geschichte & Erfahrung': { icon: Clock, hint: 'Trainingsjahre, Bestzeiten, Erfolge' },
-  'Coaching-Stil & Praeferenzen': { icon: MessageSquare, hint: 'Tonalitaet, Sprache, Feedback-Stil' },
+  'Warum ich trainiere': {
+    icon: Target,
+    titleKey: 'athleteProfile.section.why.title',
+    hintKey: 'athleteProfile.section.why.hint',
+  },
+  'Sportarten & Rollen': {
+    icon: Trophy,
+    titleKey: 'athleteProfile.section.sports.title',
+    hintKey: 'athleteProfile.section.sports.hint',
+  },
+  'Nicht verhandelbar (Leben & Kontext)': {
+    icon: Shield,
+    titleKey: 'athleteProfile.section.nonNegotiable.title',
+    hintKey: 'athleteProfile.section.nonNegotiable.hint',
+  },
+  'Wie ich auf Belastung reagiere': {
+    icon: HeartPulse,
+    titleKey: 'athleteProfile.section.response.title',
+    hintKey: 'athleteProfile.section.response.hint',
+  },
+  'Geschichte & Erfahrung': {
+    icon: Clock,
+    titleKey: 'athleteProfile.section.history.title',
+    hintKey: 'athleteProfile.section.history.hint',
+  },
+  'Coaching-Stil & Praeferenzen': {
+    icon: MessageSquare,
+    titleKey: 'athleteProfile.section.coaching.title',
+    hintKey: 'athleteProfile.section.coaching.hint',
+  },
 };
 
 function BackButton() {
   const router = useRouter();
+  const t = useT();
   return (
-    <button type="button" onClick={() => router.back()} aria-label="Zurueck" className="flex items-center">
+    <button type="button" onClick={() => router.back()} aria-label={t('common.back')} className="flex items-center">
       <ChevronLeft size={26} color="#FFFFFF" strokeWidth={2} />
     </button>
   );
 }
 
-function SectionCard({ section }: { section: ProfileSection }) {
+function SectionCard({ section, t }: { section: ProfileSection; t: TranslateFn }) {
   const meta = SECTION_META[section.name];
   const Icon = meta?.icon;
-  const hint = meta?.hint;
+  const title = meta ? t(meta.titleKey) : section.name;
+  const hint = meta ? t(meta.hintKey) : undefined;
 
   return (
     <Card variant="standard" className="mb-3">
@@ -59,15 +90,14 @@ function SectionCard({ section }: { section: ProfileSection }) {
           </div>
         )}
         <div className="flex-1">
-          <p className="text-text-primary text-base font-semibold">{section.name}</p>
+          <p className="text-text-primary text-base font-semibold">{title}</p>
           {hint && <p className="text-text-muted text-xs mt-0.5">{hint}</p>}
         </div>
       </div>
 
       {section.empty ? (
         <p className="text-text-muted text-sm italic leading-5">
-          Noch nichts erfasst. Erzaehl Ohm im Chat davon - er speichert wichtige Dinge automatisch
-          hier ab.
+          {t('athleteProfile.sectionEmpty')}
         </p>
       ) : (
         <p className="text-text-secondary text-sm leading-6 whitespace-pre-wrap">{section.content}</p>
@@ -77,13 +107,14 @@ function SectionCard({ section }: { section: ProfileSection }) {
 }
 
 export default function AthleteProfileScreen() {
+  const t = useT();
   const { sections, isEmpty, isLoading, error, refresh } = useAthleteProfile();
 
   return (
     <div className="flex-1 min-h-0 h-full flex flex-col bg-background">
       <GradientHeader
-        title="Wie Athletly dich sieht"
-        subtitle="Was Ohm dauerhaft ueber dich weiss"
+        title={t('athleteProfile.title')}
+        subtitle={t('athleteProfile.subtitle')}
         leftContent={<BackButton />}
       />
 
@@ -106,24 +137,21 @@ export default function AthleteProfileScreen() {
 
         {!isLoading && isEmpty && (
           <div className="mb-4 px-4 py-3 rounded-xl" style={{ backgroundColor: `${Colors.primaryLight}4D` }}>
-            <p className="text-text-secondary text-sm leading-5">
-              Ohm kennt dich noch nicht. Sobald du im Chat ueber dich erzaehlst, fuellen sich diese
-              Sections automatisch.
-            </p>
+            <p className="text-text-secondary text-sm leading-5">{t('athleteProfile.emptyBanner')}</p>
           </div>
         )}
 
         {!isLoading && (
           <div className="md:grid md:grid-cols-2 md:gap-x-6 md:items-start">
             {sections.map((section) => (
-              <SectionCard key={section.name} section={section} />
+              <SectionCard key={section.name} section={section} t={t} />
             ))}
           </div>
         )}
 
         {!isLoading && !error && (
-          <button type="button" onClick={refresh} className="mt-2 py-3 w-full flex items-center justify-center" aria-label="Aktualisieren">
-            <span className="text-primary text-sm font-medium">Aktualisieren</span>
+          <button type="button" onClick={refresh} className="mt-2 py-3 w-full flex items-center justify-center" aria-label={t('common.refresh')}>
+            <span className="text-primary text-sm font-medium">{t('common.refresh')}</span>
           </button>
         )}
        </div>

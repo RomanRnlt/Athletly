@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Athletly',
     short_name: 'Athletly',
-    description: 'Dein Coach. Deine Daten. Dein Plan.',
+    description: 'Your coach. Your data. Your plan.',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',

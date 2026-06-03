@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import type { Activity } from './use-activities';
 import { DEMO_MODE, DEMO_ACTIVITIES, DEMO_ACTIVITY_EXTRAS } from './demo';
+import { useT } from '@/i18n';
 
 interface ActivityDetailResponse {
   activity: Activity;
@@ -20,6 +21,7 @@ interface UseActivityDetailReturn {
 }
 
 export function useActivityDetail(id: string): UseActivityDetailReturn {
+  const t = useT();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [extras, setExtras] = useState<Record<string, number | string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +34,7 @@ export function useActivityDetail(id: string): UseActivityDetailReturn {
       const found = DEMO_ACTIVITIES.find((a) => a.garmin_activity_id === id) ?? null;
       setActivity(found);
       setExtras(found ? (DEMO_ACTIVITY_EXTRAS[found.garmin_activity_id] ?? {}) : {});
-      if (!found) setError('Activity konnte nicht geladen werden');
+      if (!found) setError(t('activity.loadFailed'));
       setIsLoading(false);
       return;
     }
@@ -43,11 +45,11 @@ export function useActivityDetail(id: string): UseActivityDetailReturn {
       setActivity(data.activity);
       setExtras(data.extras ?? {});
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Activity konnte nicht geladen werden');
+      setError(err instanceof ApiError ? err.message : t('activity.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     load();

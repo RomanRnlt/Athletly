@@ -6,7 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import { parseSession } from './plan-grammar';
 import type { WeeklyPlan, DayPlan } from '@athletly/shared';
-import { DEMO_MODE, DEMO_PLAN } from './demo';
+import { DEMO_MODE, buildDemoPlan } from './demo';
+import { useI18n } from '@/i18n';
 
 interface RawDay {
   date: string;
@@ -54,6 +55,7 @@ function mapWeek(w: RawWeek): WeeklyPlan {
 }
 
 export function usePlan(): UsePlanReturn {
+  const { t } = useI18n();
   const [weeks, setWeeks] = useState<WeeklyPlan[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [rationale, setRationale] = useState<string | null>(null);
@@ -64,10 +66,11 @@ export function usePlan(): UsePlanReturn {
   const refresh = useCallback(async () => {
     setError(null);
     if (DEMO_MODE) {
-      setHasPlan(DEMO_PLAN.hasPlan);
-      setStatus(DEMO_PLAN.status);
-      setRationale(DEMO_PLAN.rationale);
-      setWeeks([...DEMO_PLAN.weeks]);
+      const demoPlan = buildDemoPlan(t);
+      setHasPlan(demoPlan.hasPlan);
+      setStatus(demoPlan.status);
+      setRationale(demoPlan.rationale);
+      setWeeks([...demoPlan.weeks]);
       setIsLoading(false);
       return;
     }
@@ -78,11 +81,11 @@ export function usePlan(): UsePlanReturn {
       setRationale(data.rationale);
       setWeeks((data.weeks ?? []).map(mapWeek));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Plan konnte nicht geladen werden');
+      setError(err instanceof ApiError ? err.message : t('plan.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     refresh();

@@ -5,6 +5,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiGet, apiPost, ApiError } from './api';
 import { DEMO_MODE } from './demo';
+import { useT } from '@/i18n';
 
 export interface ConsentStatus {
   granted: boolean;
@@ -46,6 +47,7 @@ export function ConsentProvider({
   enabled: boolean;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const [status, setStatus] = useState<ConsentStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,24 +69,22 @@ export function ConsentProvider({
       const d = await apiGet<RawConsent>('/account/consent');
       setStatus(fromRaw(d));
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Einwilligungsstatus konnte nicht geladen werden',
-      );
+      setError(err instanceof ApiError ? err.message : t('consent.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, t]);
 
   const setConsent = useCallback(async (granted: boolean) => {
     if (DEMO_MODE) {
       if (typeof window !== 'undefined') {
-        window.alert('Demo-Modus: Einwilligungseinstellungen sind in dieser Demo deaktiviert.');
+        window.alert(t('demo.consentDisabled'));
       }
       return;
     }
     const d = await apiPost<RawConsent>('/account/consent', { granted });
     setStatus(fromRaw(d));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     setIsLoading(true);

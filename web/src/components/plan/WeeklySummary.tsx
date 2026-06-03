@@ -9,6 +9,7 @@ import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportLabel } from '@/lib/sport-icons';
 import type { WeeklyPlan, PlannedSession } from '@athletly/shared';
+import { useT } from '@/i18n';
 
 function formatTotalDuration(minutes: number): string {
   if (minutes <= 0) return '0min';
@@ -34,6 +35,7 @@ function buildSportDistribution(plan: WeeklyPlan): Array<{ sport: string; count:
 }
 
 export function WeeklySummary({ plan }: { plan: WeeklyPlan }) {
+  const t = useT();
   const allSessions = useMemo(() => getAllSessions(plan), [plan]);
   const distribution = useMemo(() => buildSportDistribution(plan), [plan]);
   const totalSessions = allSessions.length;
@@ -41,21 +43,26 @@ export function WeeklySummary({ plan }: { plan: WeeklyPlan }) {
 
   return (
     <Card variant="standard" className="mb-4">
-      <p className="text-text-primary text-lg font-semibold mb-3">Wochenuebersicht</p>
+      <p className="text-text-primary text-lg font-semibold mb-3">{t('weeklySummary.title')}</p>
 
       <div className="flex flex-col gap-2 mb-3">
         {distribution.map(({ sport, count }) => (
           <div key={sport} className="flex flex-row items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getSportColor(sport) }} />
-            <span className="text-text-secondary text-sm flex-1">{getSportLabel(sport)}</span>
-            <span className="text-text-muted text-sm">{count}x</span>
+            <span className="text-text-secondary text-sm flex-1">{getSportLabel(t, sport)}</span>
+            <span className="text-text-muted text-sm">{t('weeklySummary.timesSuffix', { count })}</span>
           </div>
         ))}
       </div>
 
       <div className="border-t border-divider pt-3 mb-3">
         <p className="text-text-primary text-sm font-medium">
-          {totalSessions} Einheiten{totalDuration > 0 ? ` / ca. ${formatTotalDuration(totalDuration)}` : ''}
+          {totalDuration > 0
+            ? t('weeklySummary.countWithDuration', {
+                count: totalSessions,
+                duration: formatTotalDuration(totalDuration),
+              })
+            : t('weeklySummary.countOnly', { count: totalSessions })}
         </p>
       </div>
 

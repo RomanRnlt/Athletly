@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import { DEMO_MODE, DEMO_USAGE } from './demo';
+import { useT } from '@/i18n';
 
 export interface UsageSummary {
   tier: 'free' | 'pro' | 'grandfather';
@@ -47,6 +48,7 @@ interface UseUsageReturn {
 }
 
 export function useUsage(): UseUsageReturn {
+  const t = useT();
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,11 +64,11 @@ export function useUsage(): UseUsageReturn {
       const d = await apiGet<RawUsage>('/account/usage');
       setUsage(fromRaw(d));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Nutzung konnte nicht geladen werden');
+      setError(err instanceof ApiError ? err.message : t('settings.usageLoadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     refresh();

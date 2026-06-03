@@ -8,17 +8,7 @@ import type {
   StepRole,
   Target,
 } from '@athletly/shared';
-
-const INTENT_LABELS: Record<SessionIntent, string> = {
-  recovery: 'Erholung',
-  aerobic_base: 'Grundlage',
-  tempo: 'Tempo',
-  threshold: 'Schwelle',
-  vo2max: 'VO2max',
-  strength: 'Kraft',
-  skill: 'Technik',
-  competition: 'Wettkampf',
-};
+import type { TranslateFn } from '@/i18n';
 
 const INTENT_TIERS: Record<SessionIntent, 'easy' | 'moderate' | 'hard'> = {
   recovery: 'easy',
@@ -31,24 +21,29 @@ const INTENT_TIERS: Record<SessionIntent, 'easy' | 'moderate' | 'hard'> = {
   competition: 'hard',
 };
 
-const ROLE_LABELS: Record<StepRole, string> = {
-  warmup: 'Aufwärmen',
-  work: 'Belastung',
-  recovery: 'Erholung',
-  rest: 'Pause',
-  cooldown: 'Auslaufen',
-};
+const INTENTS = new Set<string>([
+  'recovery',
+  'aerobic_base',
+  'tempo',
+  'threshold',
+  'vo2max',
+  'strength',
+  'skill',
+  'competition',
+]);
 
-export function getIntentLabel(intent: SessionIntent): string {
-  return INTENT_LABELS[intent] ?? intent;
+const ROLES = new Set<string>(['warmup', 'work', 'recovery', 'rest', 'cooldown']);
+
+export function getIntentLabel(t: TranslateFn, intent: SessionIntent): string {
+  return INTENTS.has(intent) ? t(`intent.${intent}` as Parameters<TranslateFn>[0]) : intent;
 }
 
 export function getIntentTier(intent: SessionIntent): 'easy' | 'moderate' | 'hard' {
   return INTENT_TIERS[intent] ?? 'moderate';
 }
 
-export function getRoleLabel(role: StepRole): string {
-  return ROLE_LABELS[role] ?? role;
+export function getRoleLabel(t: TranslateFn, role: StepRole): string {
+  return ROLES.has(role) ? t(`role.${role}` as Parameters<TranslateFn>[0]) : role;
 }
 
 function trimNum(n: number): string {
@@ -66,7 +61,7 @@ function formatSeconds(total: number): string {
   return s === 0 ? `${m} min` : `${m}:${String(s).padStart(2, '0')} min`;
 }
 
-export function formatTarget(target: Target): string {
+export function formatTarget(t: TranslateFn, target: Target): string {
   switch (target.kind) {
     case 'time':
       return typeof target.amount === 'number' ? formatSeconds(target.amount) : '';
@@ -76,10 +71,12 @@ export function formatTarget(target: Target): string {
         ? `${trimNum(target.amount / 1000)} km`
         : `${trimNum(target.amount)} m`;
     case 'reps':
-      return typeof target.amount === 'number' ? `${trimNum(target.amount)} Wdh` : '';
+      return typeof target.amount === 'number'
+        ? t('target.reps', { amount: trimNum(target.amount) })
+        : '';
     case 'open':
     default:
-      return 'offen';
+      return t('target.open');
   }
 }
 
@@ -118,7 +115,7 @@ export function formatPrescription(prescription: Prescription | null): string | 
   return prescription.value;
 }
 
-export function formatGroupMode(group: Group): string | null {
+export function formatGroupMode(t: TranslateFn, group: Group): string | null {
   switch (group.mode) {
     case 'fixed':
       return group.rounds && group.rounds > 1 ? `${group.rounds}x` : null;
@@ -132,8 +129,8 @@ export function formatGroupMode(group: Group): string | null {
       return group.capSeconds ? `AMRAP ${minutesFromSeconds(group.capSeconds)} min` : 'AMRAP';
     case 'for_time':
       return group.capSeconds
-        ? `Auf Zeit (Cap ${minutesFromSeconds(group.capSeconds)} min)`
-        : 'Auf Zeit';
+        ? t('group.forTimeCap', { minutes: minutesFromSeconds(group.capSeconds) })
+        : t('group.forTime');
     default:
       return null;
   }
@@ -141,7 +138,7 @@ export function formatGroupMode(group: Group): string | null {
 
 export function formatDuration(minutes: number): string {
   if (minutes <= 0) return '';
-  if (minutes < 60) return `${minutes} Min`;
+  if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}h ${m}min` : `${h}h`;

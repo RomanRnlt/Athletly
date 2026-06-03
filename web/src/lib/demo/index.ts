@@ -14,3 +14,4 @@ export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 export * from './seed';
 export * from './script';
+export { buildDemoProfile, buildDemoPlan } from './content';

@@ -16,14 +16,16 @@ import { useAuth } from '@/lib/use-auth';
 import { ConsentProvider, useConsent } from '@/lib/consent-context';
 import { Colors } from '@athletly/shared';
 import { DEMO_MODE } from '@/lib/demo';
+import { useT } from '@/i18n';
 
 function Splash() {
+  const t = useT();
   return (
     <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: Colors.background }}>
       <span
         className="inline-block h-9 w-9 rounded-full border-4 border-transparent animate-spin"
         style={{ borderTopColor: Colors.primary, borderRightColor: Colors.primary }}
-        aria-label="Lädt"
+        aria-label={t('common.loading')}
       />
     </div>
   );

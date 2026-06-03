@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { I18nProvider } from '@/i18n';
 import { AppFrame } from '@/components/ui/AppFrame';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 
@@ -10,7 +11,7 @@ const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-int
 
 export const metadata: Metadata = {
   title: 'Athletly',
-  description: 'Dein Coach. Deine Daten. Dein Plan.',
+  description: 'Your coach. Your data. Your plan.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
@@ -35,13 +36,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={inter.variable}>
+    <html lang="en" className={inter.variable}>
       <body>
         {/* The app is a 1:1 port of a phone app, so it renders inside a centered,
-            phone-width column on the web. AppFrame provides that shell. */}
-        <AppFrame>
-          <Providers>{children}</Providers>
-        </AppFrame>
+            phone-width column on the web. AppFrame provides that shell.
+            I18nProvider lives OUTSIDE auth so the language works in demo mode too;
+            it updates <html lang> client-side once the locale is resolved. */}
+        <I18nProvider>
+          <AppFrame>
+            <Providers>{children}</Providers>
+          </AppFrame>
+        </I18nProvider>
         <ServiceWorkerRegistration />
       </body>
     </html>

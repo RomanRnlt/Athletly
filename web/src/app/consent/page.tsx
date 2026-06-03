@@ -11,6 +11,7 @@ import { signOut } from '@/lib/use-auth';
 import { useConsent } from '@/lib/consent-context';
 import { Colors, BRAND_GRADIENT } from '@athletly/shared';
 import { confirmAction, notify } from '@/lib/dialog';
+import { useT } from '@/i18n';
 
 function Point({
   icon: Icon,
@@ -37,6 +38,7 @@ function Point({
 const CARD_SHADOW = '0 4px 16px rgba(0,0,0,0.08)';
 
 export default function ConsentScreen() {
+  const t = useT();
   const { setConsent } = useConsent();
   const [loading, setLoading] = useState(false);
 
@@ -45,16 +47,14 @@ export default function ConsentScreen() {
     try {
       await setConsent(true);
     } catch {
-      notify('Einwilligung konnte nicht gespeichert werden. Bitte erneut versuchen.');
+      notify(t('consent.saveFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDecline = () => {
-    const ok = confirmAction(
-      'Athletly kann ohne deine Einwilligung keine Gesundheitsdaten verarbeiten und dich nicht coachen. Du wirst abgemeldet.',
-    );
+    const ok = confirmAction(t('consent.declineConfirm'));
     if (ok) signOut();
   };
 
@@ -66,48 +66,37 @@ export default function ConsentScreen() {
         <div className="mb-6">
           <ShieldCheck size={36} color="#FFFFFF" />
           <h1 className="text-white text-3xl font-bold mt-3" style={{ letterSpacing: -0.5 }}>
-            Deine Daten, deine Kontrolle
+            {t('consent.title')}
           </h1>
-          <p className="text-white/80 text-base mt-2">
-            Bevor es losgeht, brauchen wir deine Einwilligung.
-          </p>
+          <p className="text-white/80 text-base mt-2">{t('consent.subtitle')}</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 flex flex-col gap-5" style={{ boxShadow: CARD_SHADOW }}>
-          <Point icon={HeartPulse} title="Gesundheits- und Trainingsdaten">
-            Athletly verarbeitet deine Trainings- und Gesundheitsdaten (z.B. Herzfrequenz, HRV,
-            Schlaf, Erholung), um dich individuell zu coachen. Das sind besondere Kategorien
-            personenbezogener Daten nach Art. 9 DSGVO.
+          <Point icon={HeartPulse} title={t('consent.healthTitle')}>
+            {t('consent.healthBody')}
           </Point>
 
-          <Point icon={Cpu} title="KI-Analyse (Anthropic, USA)">
-            Fuer die Coaching-Analyse werden relevante Daten an unseren KI-Dienstleister Anthropic in
-            den USA uebermittelt. Die Uebermittlung ist durch das EU-US Data Privacy Framework und
-            einen Auftragsverarbeitungsvertrag abgesichert. Deine Daten werden nicht zum Training der
-            KI-Modelle verwendet.
+          <Point icon={Cpu} title={t('consent.aiTitle')}>
+            {t('consent.aiBody')}
           </Point>
 
-          <Point icon={Trash2} title="Jederzeit widerrufbar">
-            Du kannst diese Einwilligung jederzeit in den Einstellungen widerrufen und deine Daten
-            exportieren oder vollstaendig loeschen lassen.
+          <Point icon={Trash2} title={t('consent.revokeTitle')}>
+            {t('consent.revokeBody')}
           </Point>
 
           <div className="flex flex-col gap-3 mt-1">
             <Button
               variant="primary"
               size="lg"
-              label="Zustimmen und loslegen"
+              label={t('consent.agree')}
               onPress={handleAgree}
               loading={loading}
               disabled={loading}
             />
-            <Button variant="ghost" size="md" label="Nicht jetzt" onPress={handleDecline} disabled={loading} />
+            <Button variant="ghost" size="md" label={t('consent.notNow')} onPress={handleDecline} disabled={loading} />
           </div>
 
-          <p className="text-text-muted text-xs text-center leading-4">
-            Mit dem Tippen auf &quot;Zustimmen&quot; willigst du in die Verarbeitung deiner Gesundheitsdaten
-            zur KI-gestuetzten Trainingsanalyse und die damit verbundene Uebermittlung in die USA ein.
-          </p>
+          <p className="text-text-muted text-xs text-center leading-4">{t('consent.fineprint')}</p>
         </div>
       </div>
     </div>

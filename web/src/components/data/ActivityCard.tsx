@@ -9,6 +9,7 @@ import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon, getSportLabel } from '@/lib/sport-icons';
 import type { Activity } from '@/lib/use-activities';
+import { useI18n } from '@/i18n';
 
 const PACE_SPORTS = new Set(['running', 'trail_running', 'treadmill_running', 'hiking']);
 
@@ -28,11 +29,11 @@ export function fmtPace(pace: number | null): string | null {
   return `${m}:${String(s).padStart(2, '0')}/km`;
 }
 
-export function fmtActivityDate(iso: string | null): string {
+export function fmtActivityDate(intlLocale: string, iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(intlLocale, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function Metric({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
@@ -45,6 +46,7 @@ function Metric({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
 }
 
 export function ActivityCard({ activity, onPress }: { activity: Activity; onPress?: () => void }) {
+  const { t, intlLocale } = useI18n();
   const sport = (activity.sport || 'unknown').toLowerCase();
   const color = getSportColor(sport);
   const Icon = getSportIcon(sport);
@@ -71,8 +73,8 @@ export function ActivityCard({ activity, onPress }: { activity: Activity; onPres
             <Icon size={18} color={color} strokeWidth={2} />
           </div>
           <div className="flex-1">
-            <p className="text-text-primary text-base font-semibold">{getSportLabel(sport)}</p>
-            <p className="text-text-muted text-xs mt-0.5">{fmtActivityDate(activity.start_time)}</p>
+            <p className="text-text-primary text-base font-semibold">{getSportLabel(t, sport)}</p>
+            <p className="text-text-muted text-xs mt-0.5">{fmtActivityDate(intlLocale, activity.start_time)}</p>
           </div>
           {onPress && <ChevronRight size={18} color={Colors.textMuted} />}
         </div>

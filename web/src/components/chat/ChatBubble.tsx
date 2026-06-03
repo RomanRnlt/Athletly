@@ -7,6 +7,7 @@ import { Colors } from '@athletly/shared';
 import { LiveActivity } from './LiveActivity';
 import { ShowWorkFooter } from './ShowWorkFooter';
 import type { ChatMessage, ToolStep } from '@athletly/shared';
+import { useT } from '@/i18n';
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -26,6 +27,7 @@ function formatTime(date: Date): string {
 }
 
 function ThinkingPill() {
+  const t = useT();
   return (
     <div
       className="inline-flex flex-row items-center gap-2 rounded-2xl rounded-tl-sm px-4 py-3"
@@ -36,7 +38,7 @@ function ThinkingPill() {
         style={{ borderTopColor: Colors.textMuted, borderRightColor: Colors.textMuted }}
         aria-hidden
       />
-      <span className="text-text-muted text-sm">Denke nach...</span>
+      <span className="text-text-muted text-sm">{t('chat.thinking')}</span>
     </div>
   );
 }

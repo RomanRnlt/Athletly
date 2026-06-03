@@ -4,7 +4,8 @@
 // Ported 1:1 from mobile/lib/use-profile.ts.
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
-import { DEMO_MODE, DEMO_PROFILE } from './demo';
+import { DEMO_MODE, buildDemoProfile } from './demo';
+import { useI18n } from '@/i18n';
 
 export interface ProfileSection {
   name: string;
@@ -30,6 +31,7 @@ interface UseProfileReturn {
 }
 
 export function useAthleteProfile(): UseProfileReturn {
+  const { t } = useI18n();
   const [sections, setSections] = useState<ProfileSection[]>([]);
   const [isEmpty, setIsEmpty] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState(true);
@@ -40,10 +42,11 @@ export function useAthleteProfile(): UseProfileReturn {
   const refresh = useCallback(async () => {
     setError(null);
     if (DEMO_MODE) {
-      setSections([...DEMO_PROFILE.sections]);
-      setIsEmpty(DEMO_PROFILE.is_empty);
-      setOnboardingCompleted(DEMO_PROFILE.onboarding_completed);
-      setFilledSections(DEMO_PROFILE.filled_sections);
+      const demoProfile = buildDemoProfile(t);
+      setSections([...demoProfile.sections]);
+      setIsEmpty(demoProfile.is_empty);
+      setOnboardingCompleted(demoProfile.onboarding_completed);
+      setFilledSections(demoProfile.filled_sections);
       setIsLoading(false);
       return;
     }
@@ -54,12 +57,12 @@ export function useAthleteProfile(): UseProfileReturn {
       setOnboardingCompleted(data.onboarding_completed);
       setFilledSections(data.filled_sections);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Profil konnte nicht geladen werden';
+      const message = err instanceof ApiError ? err.message : t('athleteProfile.loadFailed');
       setError(message);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     refresh();

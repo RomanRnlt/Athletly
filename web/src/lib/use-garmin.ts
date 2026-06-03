@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, ApiError } from './api';
 import { DEMO_MODE, DEMO_GARMIN_STATUS } from './demo';
+import { useT } from '@/i18n';
 
 export interface GarminStatus {
   connected: boolean;
@@ -44,6 +45,7 @@ const EMPTY_STATUS: GarminStatus = {
 };
 
 export function useGarmin(): UseGarminReturn {
+  const t = useT();
   const [status, setStatus] = useState<GarminStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -60,13 +62,13 @@ export function useGarmin(): UseGarminReturn {
       const result = await apiGet<GarminStatus>('/garmin/status');
       setStatus(result);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Status konnte nicht geladen werden';
+      const message = err instanceof ApiError ? err.message : t('garmin.statusLoadFailed');
       setError(message);
       setStatus(EMPTY_STATUS);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     refresh();
@@ -89,14 +91,14 @@ export function useGarmin(): UseGarminReturn {
         await refresh();
         return result;
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : 'Sync fehlgeschlagen';
+        const message = err instanceof ApiError ? err.message : t('garmin.syncFailed');
         setError(message);
         return null;
       } finally {
         setIsSyncing(false);
       }
     },
-    [refresh],
+    [refresh, t],
   );
 
   const disconnect = useCallback(async () => {
@@ -106,10 +108,10 @@ export function useGarmin(): UseGarminReturn {
       await apiDelete<{ status: string }>('/garmin/disconnect');
       await refresh();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Trennen fehlgeschlagen';
+      const message = err instanceof ApiError ? err.message : t('garmin.disconnectFailed');
       setError(message);
     }
-  }, [refresh]);
+  }, [refresh, t]);
 
   return { status, isLoading, isSyncing, error, refresh, sync, disconnect };
 }

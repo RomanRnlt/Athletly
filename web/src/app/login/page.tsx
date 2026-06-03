@@ -12,12 +12,21 @@ import { GoogleLogo } from '@/components/auth/GoogleLogo';
 import { Colors, BRAND_GRADIENT } from '@athletly/shared';
 import { signInWithEmail, signUpWithEmail } from '@/lib/use-auth';
 import { signInWithApple, signInWithGoogle } from '@/lib/social-auth';
+import { useT, type TranslateFn } from '@/i18n';
 
 type Mode = 'choose' | 'email-signin' | 'email-signup';
 
 const SOCIAL_BUTTON_HEIGHT = 52;
 
-function GoogleSignInButton({ onPress, loading }: { onPress: () => void; loading: boolean }) {
+function GoogleSignInButton({
+  onPress,
+  loading,
+  t,
+}: {
+  onPress: () => void;
+  loading: boolean;
+  t: TranslateFn;
+}) {
   return (
     <button
       type="button"
@@ -31,17 +40,25 @@ function GoogleSignInButton({ onPress, loading }: { onPress: () => void; loading
         borderColor: Colors.divider,
         opacity: loading ? 0.6 : 1,
       }}
-      aria-label="Mit Google anmelden"
+      aria-label={t('login.withGoogle')}
     >
       <GoogleLogo size={20} />
       <span style={{ color: '#1F1F1F', fontSize: 17, fontWeight: 600, letterSpacing: 0.1, marginLeft: 8 }}>
-        Mit Google anmelden
+        {t('login.withGoogle')}
       </span>
     </button>
   );
 }
 
-function AppleSignInButton({ onPress, loading }: { onPress: () => void; loading: boolean }) {
+function AppleSignInButton({
+  onPress,
+  loading,
+  t,
+}: {
+  onPress: () => void;
+  loading: boolean;
+  t: TranslateFn;
+}) {
   return (
     <button
       type="button"
@@ -49,10 +66,10 @@ function AppleSignInButton({ onPress, loading }: { onPress: () => void; loading:
       disabled={loading}
       className="w-full flex flex-row items-center justify-center rounded-xl bg-black"
       style={{ height: SOCIAL_BUTTON_HEIGHT, opacity: loading ? 0.6 : 1 }}
-      aria-label="Mit Apple anmelden"
+      aria-label={t('login.withApple')}
     >
       <span className="text-white" style={{ fontSize: 18, marginRight: 6 }}></span>
-      <span style={{ color: '#FFFFFF', fontSize: 17, fontWeight: 600 }}>Mit Apple anmelden</span>
+      <span style={{ color: '#FFFFFF', fontSize: 17, fontWeight: 600 }}>{t('login.withApple')}</span>
     </button>
   );
 }
@@ -68,6 +85,7 @@ function ErrorBox({ message }: { message: string }) {
 const CARD_SHADOW = '0 4px 16px rgba(0,0,0,0.08)';
 
 export default function LoginScreen() {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('choose');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,7 +98,7 @@ export default function LoginScreen() {
     try {
       await fn();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : `${label} fehlgeschlagen`;
+      const msg = err instanceof Error ? err.message : t('login.providerFailed', { provider: label });
       setError(msg);
       setLoading(false);
     }
@@ -90,7 +108,7 @@ export default function LoginScreen() {
   const handleEmailSubmit = async () => {
     const e = email.trim();
     if (!e || !password) {
-      setError('E-Mail und Passwort sind erforderlich.');
+      setError(t('login.errorCredentialsRequired'));
       return;
     }
     setError(null);
@@ -99,7 +117,7 @@ export default function LoginScreen() {
       const fn = mode === 'email-signup' ? signUpWithEmail : signInWithEmail;
       await fn(e, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Anmeldung fehlgeschlagen');
+      setError(err instanceof Error ? err.message : t('login.errorSignInFailed'));
     } finally {
       setLoading(false);
     }
@@ -114,38 +132,38 @@ export default function LoginScreen() {
       <div className="relative h-full overflow-y-auto no-scrollbar" style={{ padding: '60px 24px 24px' }}>
         <div className="mb-10">
           <h1 className="text-white text-4xl font-bold" style={{ letterSpacing: -0.5 }}>
-            Athletly
+            {t('app.name')}
           </h1>
-          <p className="text-white/80 text-base mt-2">Dein Coach. Deine Daten. Dein Plan.</p>
+          <p className="text-white/80 text-base mt-2">{t('app.tagline')}</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 flex flex-col gap-3" style={{ boxShadow: CARD_SHADOW }}>
           {mode === 'choose' && (
             <>
-              <p className="text-text-primary text-lg font-semibold mb-1">Willkommen</p>
-              <p className="text-text-secondary text-sm mb-3">
-                Melde dich an oder erstelle einen Account.
-              </p>
+              <p className="text-text-primary text-lg font-semibold mb-1">{t('login.welcome')}</p>
+              <p className="text-text-secondary text-sm mb-3">{t('login.subtitle')}</p>
 
               <AppleSignInButton
-                onPress={() => runProvider(signInWithApple, 'Apple-Anmeldung')}
+                onPress={() => runProvider(signInWithApple, t('login.appleProvider'))}
                 loading={loading}
+                t={t}
               />
               <GoogleSignInButton
-                onPress={() => runProvider(signInWithGoogle, 'Google-Anmeldung')}
+                onPress={() => runProvider(signInWithGoogle, t('login.googleProvider'))}
                 loading={loading}
+                t={t}
               />
 
               <div className="flex flex-row items-center my-1 gap-3">
                 <div className="flex-1 h-px bg-divider" />
-                <span className="text-text-muted text-xs">oder</span>
+                <span className="text-text-muted text-xs">{t('login.or')}</span>
                 <div className="flex-1 h-px bg-divider" />
               </div>
 
               <Button
                 variant="secondary"
                 size="lg"
-                label="Mit E-Mail anmelden"
+                label={t('login.withEmail')}
                 icon={Mail}
                 onPress={() => setMode('email-signin')}
                 disabled={loading}
@@ -155,9 +173,7 @@ export default function LoginScreen() {
                 onClick={() => setMode('email-signup')}
                 className="py-2 flex items-center justify-center"
               >
-                <span className="text-primary text-sm font-medium">
-                  Noch kein Konto? Account erstellen
-                </span>
+                <span className="text-primary text-sm font-medium">{t('login.noAccount')}</span>
               </button>
 
               {error && <ErrorBox message={error} />}
@@ -167,15 +183,15 @@ export default function LoginScreen() {
           {(mode === 'email-signin' || mode === 'email-signup') && (
             <>
               <button type="button" onClick={() => setMode('choose')} className="mb-2 self-start">
-                <span className="text-primary text-sm">{'← Zurueck'}</span>
+                <span className="text-primary text-sm">{`← ${t('common.back')}`}</span>
               </button>
               <p className="text-text-primary text-lg font-semibold mb-1">
-                {mode === 'email-signup' ? 'Konto erstellen' : 'Anmelden'}
+                {mode === 'email-signup' ? t('login.createAccount') : t('login.signIn')}
               </p>
               <Input
-                label="E-Mail"
+                label={t('login.emailLabel')}
                 leftIcon={Mail}
-                placeholder="du@example.com"
+                placeholder={t('login.emailPlaceholder')}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -183,9 +199,9 @@ export default function LoginScreen() {
                 autoCorrect={false}
               />
               <Input
-                label="Passwort"
+                label={t('login.passwordLabel')}
                 isPassword
-                placeholder="Mindestens 6 Zeichen"
+                placeholder={t('login.passwordPlaceholder')}
                 value={password}
                 onChangeText={setPassword}
                 onSubmit={handleEmailSubmit}
@@ -194,7 +210,7 @@ export default function LoginScreen() {
               <Button
                 variant="primary"
                 size="lg"
-                label={mode === 'email-signup' ? 'Konto erstellen' : 'Anmelden'}
+                label={mode === 'email-signup' ? t('login.createAccount') : t('login.signIn')}
                 icon={ArrowRight}
                 iconPosition="right"
                 onPress={handleEmailSubmit}
@@ -207,9 +223,7 @@ export default function LoginScreen() {
                 className="py-1 flex items-center justify-center"
               >
                 <span className="text-primary text-sm font-medium">
-                  {mode === 'email-signin'
-                    ? 'Noch kein Konto? Account erstellen'
-                    : 'Schon ein Konto? Anmelden'}
+                  {mode === 'email-signin' ? t('login.noAccount') : t('login.haveAccount')}
                 </span>
               </button>
             </>
