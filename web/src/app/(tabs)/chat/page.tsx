@@ -50,7 +50,7 @@ function EmptyState({ onboarding }: { onboarding: boolean }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8">
       <p className="text-text-primary text-base font-medium mb-2">{onboarding ? 'Willkommen!' : 'Hi.'}</p>
-      <p className="text-text-secondary text-sm text-center leading-5">
+      <p className="text-text-secondary text-sm text-center leading-5 max-w-md">
         {onboarding
           ? 'Sag Ohm "Hi" damit er dich kennenlernen kann. Er fragt dich ein paar Sachen ueber dich und dein Training, damit er dich danach richtig coachen kann.'
           : 'Frag mich was zu deinem Training, deinem Schlaf oder deinem Wochenvolumen. Wenn deine Garmin-Daten verbunden sind kann ich konkrete Zahlen ziehen.'}
@@ -118,6 +118,7 @@ export default function ChatScreen() {
         title="Chat"
         subtitle={subtitleFor(isStreaming, toolStatus, showOnboardingBar)}
         rightContent={<StatusDot online={!error} />}
+        contentMaxWidthClass="md:max-w-[760px]"
       />
 
       {showOnboardingBar && <OnboardingBar filledSections={profile.filledSections} />}
@@ -125,15 +126,17 @@ export default function ChatScreen() {
       {isEmpty ? (
         <EmptyState onboarding={showOnboardingBar} />
       ) : (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 pt-3 pb-3 flex flex-col">
-          {messages.map((item) => (
-            <ChatBubble
-              key={item.id}
-              message={item}
-              liveSteps={item.id === streamingId ? liveSteps : undefined}
-              streamStartedAt={item.id === streamingId ? streamStartedAt : undefined}
-            />
-          ))}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 pt-3 pb-3 md:px-10 md:pt-8">
+          <div className="flex flex-col w-full mx-auto md:max-w-[760px]">
+            {messages.map((item) => (
+              <ChatBubble
+                key={item.id}
+                message={item}
+                liveSteps={item.id === streamingId ? liveSteps : undefined}
+                streamStartedAt={item.id === streamingId ? streamStartedAt : undefined}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -143,9 +146,17 @@ export default function ChatScreen() {
         </div>
       )}
 
-      {exhausted && <CreditLimitBanner onUpgrade={() => router.push('/paywall')} />}
+      {exhausted && (
+        <div className="w-full mx-auto md:max-w-[760px]">
+          <CreditLimitBanner onUpgrade={() => router.push('/paywall')} />
+        </div>
+      )}
 
-      <ChatInput onSend={sendMessage} disabled={isStreaming || exhausted} />
+      <div className="md:px-6">
+        <div className="w-full mx-auto md:max-w-[760px] md:mb-4 md:rounded-2xl md:border md:border-divider md:overflow-hidden md:shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
+          <ChatInput onSend={sendMessage} disabled={isStreaming || exhausted} />
+        </div>
+      </div>
     </div>
   );
 }

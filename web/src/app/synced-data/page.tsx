@@ -139,6 +139,7 @@ export default function SyncedDataScreen() {
         leftContent={<BackButton />}
       />
 
+      <div className="md:max-w-5xl md:mx-auto md:w-full md:px-6">
       <Segmented mode={mode} onChange={setMode} />
 
       {mode === 'activities' ? (
@@ -166,6 +167,7 @@ export default function SyncedDataScreen() {
           ))}
         </FilterRow>
       )}
+      </div>
 
       {error && (
         <div className="mx-4 mb-2 px-4 py-2.5 rounded-xl bg-error-light">
@@ -173,7 +175,7 @@ export default function SyncedDataScreen() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-6">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-6 md:pb-12">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <span
@@ -187,18 +189,20 @@ export default function SyncedDataScreen() {
               Keine Daten. Verbinde Garmin und starte einen Sync in den Einstellungen.
             </p>
           </div>
-        ) : mode === 'activities' ? (
-          activities.activities.map((item) => (
-            <ActivityCard
-              key={item.garmin_activity_id}
-              activity={item}
-              onPress={() => router.push(`/activity/${encodeURIComponent(item.garmin_activity_id)}`)}
-            />
-          ))
         ) : (
-          filteredMetrics.map((item) => (
-            <HealthDayCard key={item.date} metric={item} onPress={() => openHealthDay(item)} />
-          ))
+          <div className="md:max-w-5xl md:mx-auto md:w-full md:px-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-x-4">
+            {mode === 'activities'
+              ? activities.activities.map((item) => (
+                  <ActivityCard
+                    key={item.garmin_activity_id}
+                    activity={item}
+                    onPress={() => router.push(`/activity/${encodeURIComponent(item.garmin_activity_id)}`)}
+                  />
+                ))
+              : filteredMetrics.map((item) => (
+                  <HealthDayCard key={item.date} metric={item} onPress={() => openHealthDay(item)} />
+                ))}
+          </div>
         )}
       </div>
     </div>

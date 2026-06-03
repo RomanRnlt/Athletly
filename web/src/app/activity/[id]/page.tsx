@@ -23,7 +23,10 @@ function BackButton() {
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl px-4 py-3 mb-2" style={{ backgroundColor: Colors.surface, width: '48%' }}>
+    <div
+      className="rounded-xl px-4 py-3 mb-2 w-[48%] md:w-auto"
+      style={{ backgroundColor: Colors.surface }}
+    >
       <p className="text-text-muted text-[11px] uppercase tracking-wide">{label}</p>
       <p className="text-text-primary text-lg font-bold mt-1">{value}</p>
     </div>
@@ -106,7 +109,8 @@ export default function ActivityDetailScreen() {
           <p className="text-error text-xs">{error}</p>
         </div>
       ) : activity ? (
-        <div className="flex-1 overflow-y-auto no-scrollbar p-4">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-4 md:px-10 md:py-8">
+         <div className="mx-auto w-full md:max-w-4xl">
           <div className="flex flex-row items-center mb-4">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center mr-3 shrink-0"
@@ -114,11 +118,11 @@ export default function ActivityDetailScreen() {
             >
               <Icon size={24} color={color} strokeWidth={2} />
             </div>
-            <p className="text-text-primary text-lg font-bold flex-1">{title}</p>
+            <p className="text-text-primary text-lg md:text-2xl font-bold flex-1">{title}</p>
           </div>
 
           <p className="text-text-muted text-xs font-semibold uppercase tracking-wide mb-2">Kennzahlen</p>
-          <div className="flex flex-row flex-wrap justify-between">
+          <div className="flex flex-row flex-wrap justify-between md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-3">
             {primaryStats.map((s) => (
               <StatBox key={s.label} label={s.label} value={s.value} />
             ))}
@@ -126,14 +130,15 @@ export default function ActivityDetailScreen() {
 
           {extraEntries.length > 0 && (
             <>
-              <p className="text-text-muted text-xs font-semibold uppercase tracking-wide mb-2 mt-4">Details</p>
-              <div className="flex flex-row flex-wrap justify-between">
+              <p className="text-text-muted text-xs font-semibold uppercase tracking-wide mb-2 mt-6">Details</p>
+              <div className="flex flex-row flex-wrap justify-between md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-3">
                 {extraEntries.map((e) => (
                   <StatBox key={e.label} label={e.label} value={e.value} />
                 ))}
               </div>
             </>
           )}
+         </div>
         </div>
       ) : null}
     </div>

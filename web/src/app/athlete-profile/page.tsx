@@ -87,7 +87,8 @@ export default function AthleteProfileScreen() {
         leftContent={<BackButton />}
       />
 
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pt-4 pb-8">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pt-4 pb-8 md:px-10 md:pt-8 md:pb-12">
+       <div className="mx-auto w-full md:max-w-5xl">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
             <span
@@ -112,13 +113,20 @@ export default function AthleteProfileScreen() {
           </div>
         )}
 
-        {!isLoading && sections.map((section) => <SectionCard key={section.name} section={section} />)}
+        {!isLoading && (
+          <div className="md:grid md:grid-cols-2 md:gap-x-6 md:items-start">
+            {sections.map((section) => (
+              <SectionCard key={section.name} section={section} />
+            ))}
+          </div>
+        )}
 
         {!isLoading && !error && (
           <button type="button" onClick={refresh} className="mt-2 py-3 w-full flex items-center justify-center" aria-label="Aktualisieren">
             <span className="text-primary text-sm font-medium">Aktualisieren</span>
           </button>
         )}
+       </div>
       </div>
     </div>
   );

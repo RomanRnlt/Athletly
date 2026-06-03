@@ -65,7 +65,10 @@ function SleepBreakdown({ metric }: { metric: DailyMetric }) {
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl px-4 py-3 mb-2" style={{ backgroundColor: Colors.surface, width: '48%' }}>
+    <div
+      className="rounded-xl px-4 py-3 mb-2 w-[48%] md:w-auto"
+      style={{ backgroundColor: Colors.surface }}
+    >
       <p className="text-text-muted text-[11px] uppercase tracking-wide">{label}</p>
       <p className="text-text-primary text-lg font-bold mt-1">{value}</p>
     </div>
@@ -130,7 +133,8 @@ export default function HealthDayDetailScreen() {
           <p className="text-text-secondary text-sm text-center">Keine Daten fuer diesen Tag.</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto no-scrollbar p-4">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-4 md:px-10 md:py-8">
+         <div className="mx-auto w-full md:max-w-4xl">
           {metric.sleep_score !== null && (
             <div className="rounded-2xl p-4 mb-4" style={{ backgroundColor: Colors.surface }}>
               <div className="flex flex-row items-center justify-between mb-1">
@@ -146,11 +150,12 @@ export default function HealthDayDetailScreen() {
           <SleepBreakdown metric={metric} />
 
           <p className="text-text-muted text-xs font-semibold uppercase tracking-wide mb-2">Tageswerte</p>
-          <div className="flex flex-row flex-wrap justify-between">
+          <div className="flex flex-row flex-wrap justify-between md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-3">
             {allStats(metric).map((s) => (
               <StatBox key={s.label} label={s.label} value={s.value} />
             ))}
           </div>
+         </div>
         </div>
       )}
     </div>
