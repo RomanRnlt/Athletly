@@ -51,9 +51,9 @@ export default function PaywallScreen() {
   };
 
   return (
-    <div className="flex-1 bg-background relative min-h-screen">
+    <div className="flex-1 min-h-0 h-full bg-background relative">
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 300, background: BRAND_GRADIENT }} />
-      <div className="relative overflow-y-auto no-scrollbar min-h-screen" style={{ padding: '16px 24px 24px' }}>
+      <div className="relative h-full overflow-y-auto no-scrollbar" style={{ padding: '16px 24px 24px' }}>
         <div className="flex justify-end">
           <Button variant="icon" size="sm" icon={X} onPress={() => router.back()} />
         </div>

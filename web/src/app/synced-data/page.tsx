@@ -132,7 +132,7 @@ export default function SyncedDataScreen() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-h-screen">
+    <div className="flex-1 min-h-0 h-full flex flex-col bg-background">
       <GradientHeader
         title="Synced Data"
         subtitle={`${count} ${mode === 'activities' ? 'Aktivitaeten' : 'Tage'}`}

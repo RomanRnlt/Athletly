@@ -59,10 +59,10 @@ export default function ConsentScreen() {
   };
 
   return (
-    <div className="flex-1 bg-background relative min-h-screen">
+    <div className="flex-1 min-h-0 h-full bg-background relative">
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 280, background: BRAND_GRADIENT }} />
 
-      <div className="relative overflow-y-auto no-scrollbar min-h-screen" style={{ padding: '48px 24px 24px' }}>
+      <div className="relative h-full overflow-y-auto no-scrollbar" style={{ padding: '48px 24px 24px' }}>
         <div className="mb-6">
           <ShieldCheck size={36} color="#FFFFFF" />
           <h1 className="text-white text-3xl font-bold mt-3" style={{ letterSpacing: -0.5 }}>

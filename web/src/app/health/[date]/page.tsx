@@ -118,7 +118,7 @@ export default function HealthDayDetailScreen() {
   const sleepDuration = metric ? fmtSleepDuration(metric.sleep_duration_minutes) : null;
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-h-screen">
+    <div className="flex-1 min-h-0 h-full flex flex-col bg-background">
       <GradientHeader
         title="Tagesdetails"
         subtitle={metric ? fmtHealthDate(metric.date) : date}
