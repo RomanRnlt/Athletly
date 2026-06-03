@@ -2,6 +2,10 @@
 .DS_Store
 Thumbs.db
 
+# Claude Code working dir (settings, sessions, worktrees) - not for the public repo.
+# Architecture docs worth shipping live under top-level docs/ instead.
+.claude/
+
 # Editors
 .idea/
 .vscode/
