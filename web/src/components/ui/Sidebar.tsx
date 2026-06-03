@@ -18,17 +18,19 @@ import {
 import { BRAND_GRADIENT, Colors } from '@athletly/shared';
 import { useAthleteProfile } from '@/lib/use-profile';
 import { useAuth } from '@/lib/use-auth';
+import { useT } from '@/i18n';
+import type { MessageKey } from '@/i18n';
 
 interface NavDef {
   href: string;
-  label: string;
+  labelKey: MessageKey;
   icon: LucideIcon;
 }
 
 const NAV: NavDef[] = [
-  { href: '/plan', label: 'Plan', icon: Calendar },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/settings', label: 'Einstellungen', icon: Settings },
+  { href: '/plan', labelKey: 'nav.plan', icon: Calendar },
+  { href: '/chat', labelKey: 'nav.chat', icon: MessageCircle },
+  { href: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 function getInitial(email: string | undefined): string {
@@ -36,6 +38,7 @@ function getInitial(email: string | undefined): string {
 }
 
 export function Sidebar() {
+  const t = useT();
   const pathname = usePathname();
   const { onboardingCompleted, isLoading } = useAthleteProfile();
   const { session } = useAuth();
@@ -78,7 +81,7 @@ export function Sidebar() {
                 color={active ? Colors.primary : Colors.textSecondary}
                 strokeWidth={active ? 2.3 : 2}
               />
-              <span className="text-[15px]">{item.label}</span>
+              <span className="text-[15px]">{t(item.labelKey)}</span>
               {showBadge && (
                 <span
                   className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center"
@@ -108,9 +111,9 @@ export function Sidebar() {
           </span>
           <span className="flex-1 min-w-0">
             <span className="block text-text-primary text-sm font-semibold truncate">
-              {email ?? 'Athlete'}
+              {email ?? t('nav.athleteFallback')}
             </span>
-            <span className="block text-text-muted text-xs">Profil ansehen</span>
+            <span className="block text-text-muted text-xs">{t('nav.viewProfile')}</span>
           </span>
         </Link>
       </div>

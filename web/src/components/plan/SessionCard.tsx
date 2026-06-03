@@ -19,6 +19,7 @@ import {
   getRoleLabel,
 } from '@/lib/plan-format';
 import type { Group, PlannedSession, Step } from '@athletly/shared';
+import { useT, type TranslateFn } from '@/i18n';
 
 function PrescriptionChip({ text }: { text: string }) {
   return (
@@ -33,9 +34,9 @@ function PrescriptionChip({ text }: { text: string }) {
   );
 }
 
-function StepLine({ step }: { step: Step }) {
-  const roleLabel = getRoleLabel(step.role);
-  const targetText = formatTarget(step.target);
+function StepLine({ step, t }: { step: Step; t: TranslateFn }) {
+  const roleLabel = getRoleLabel(t, step.role);
+  const targetText = formatTarget(t, step.target);
   const prescription = formatPrescription(step.prescription);
 
   const head = step.movement || roleLabel;
@@ -59,8 +60,8 @@ function StepLine({ step }: { step: Step }) {
   );
 }
 
-function GroupBlock({ group }: { group: Group }) {
-  const header = formatGroupMode(group);
+function GroupBlock({ group, t }: { group: Group; t: TranslateFn }) {
+  const header = formatGroupMode(t, group);
   const showHeader = Boolean(header) || Boolean(group.label);
 
   return (
@@ -80,16 +81,17 @@ function GroupBlock({ group }: { group: Group }) {
         </div>
       ) : null}
       {group.steps.map((step, idx) => (
-        <StepLine key={`step-${idx}`} step={step} />
+        <StepLine key={`step-${idx}`} step={step} t={t} />
       ))}
     </div>
   );
 }
 
 export function SessionCard({ session }: { session: PlannedSession }) {
+  const t = useT();
   const sportColor = getSportColor(session.sport);
-  const sportLabel = getSportLabel(session.sport);
-  const intentLabel = getIntentLabel(session.intent);
+  const sportLabel = getSportLabel(t, session.sport);
+  const intentLabel = getIntentLabel(t, session.intent);
   const intentTier = getIntentTier(session.intent);
   const duration = formatDuration(session.estimatedMinutes);
   const hasGroups = session.groups.length > 0;
@@ -109,7 +111,7 @@ export function SessionCard({ session }: { session: PlannedSession }) {
               <div className="flex flex-row items-center gap-1">
                 <CheckCircle2 size={14} color={Colors.success} strokeWidth={2.5} />
                 <span className="text-xs font-semibold" style={{ color: Colors.success }}>
-                  Erledigt
+                  {t('session.done')}
                 </span>
               </div>
             ) : null}
@@ -126,7 +128,7 @@ export function SessionCard({ session }: { session: PlannedSession }) {
         {hasGroups ? (
           <div className="mb-1">
             {session.groups.map((group, idx) => (
-              <GroupBlock key={`group-${idx}`} group={group} />
+              <GroupBlock key={`group-${idx}`} group={group} t={t} />
             ))}
           </div>
         ) : null}
@@ -135,7 +137,7 @@ export function SessionCard({ session }: { session: PlannedSession }) {
           <div className="flex flex-row items-center gap-1.5 mt-1">
             <Clock size={14} color={Colors.textSecondary} strokeWidth={2} />
             <span className="text-sm" style={{ color: Colors.textSecondary }}>
-              ca. {duration}
+              {t('session.approxDuration', { duration })}
             </span>
           </div>
         ) : null}

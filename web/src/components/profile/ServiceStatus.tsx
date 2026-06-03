@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Colors } from '@athletly/shared';
+import { useT, type TranslateFn } from '@/i18n';
 
 interface ServiceStatusProps {
   name: string;
@@ -18,19 +19,19 @@ interface ServiceStatusProps {
   isLast?: boolean;
 }
 
-function formatLastSync(dateStr: string): string {
+function formatLastSync(t: TranslateFn, dateStr: string): string {
   const date = new Date(dateStr);
   const diffMs = Date.now() - date.getTime();
   const diffMin = Math.floor(diffMs / 60_000);
 
-  if (diffMin < 1) return 'Gerade eben';
-  if (diffMin < 60) return `Vor ${diffMin} Min.`;
+  if (diffMin < 1) return t('time.justNow');
+  if (diffMin < 60) return t('time.minutesAgo', { n: diffMin });
 
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `Vor ${diffHours} Std.`;
+  if (diffHours < 24) return t('time.hoursAgo', { n: diffHours });
 
   const diffDays = Math.floor(diffHours / 24);
-  return `Vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+  return diffDays > 1 ? t('time.daysAgoMany', { n: diffDays }) : t('time.daysAgoOne', { n: diffDays });
 }
 
 export function ServiceStatus({
@@ -42,6 +43,7 @@ export function ServiceStatus({
   onDisconnect,
   isLast = false,
 }: ServiceStatusProps) {
+  const t = useT();
   const borderClass = isLast ? '' : 'border-b border-divider';
 
   return (
@@ -54,23 +56,23 @@ export function ServiceStatus({
         <div className="flex flex-row items-center gap-2 mb-0.5">
           <span className="text-base text-text-primary">{name}</span>
           {isConnected ? (
-            <Badge type="status" status="success" label="Verbunden" />
+            <Badge type="status" status="success" label={t('common.connected')} />
           ) : (
             <span className="inline-block rounded-full px-3 py-1" style={{ backgroundColor: '#94A3B815' }}>
-              <span className="text-xs font-semibold text-text-muted">Nicht verbunden</span>
+              <span className="text-xs font-semibold text-text-muted">{t('common.notConnected')}</span>
             </span>
           )}
         </div>
         {isConnected && lastSync && (
-          <p className="text-xs text-text-muted">Letzte Sync: {formatLastSync(lastSync)}</p>
+          <p className="text-xs text-text-muted">{t('serviceStatus.lastSync', { time: formatLastSync(t, lastSync) })}</p>
         )}
       </div>
 
       {isConnected && onDisconnect && (
-        <Button variant="ghost" size="sm" label="Trennen" onPress={onDisconnect} />
+        <Button variant="ghost" size="sm" label={t('common.disconnect')} onPress={onDisconnect} />
       )}
       {!isConnected && onConnect && (
-        <Button variant="ghost" size="sm" label="Verbinden" onPress={onConnect} />
+        <Button variant="ghost" size="sm" label={t('common.connect')} onPress={onConnect} />
       )}
     </div>
   );

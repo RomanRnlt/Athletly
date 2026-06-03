@@ -8,6 +8,8 @@ import { streamChat } from './api';
 import type { StatusEvent, ToolCallEvent, ToolResultEvent } from './api';
 import type { ChatMessage, ToolStep, ToolStepStatus } from '@athletly/shared';
 import { DEMO_MODE, replayScriptedTurn, replayWelcome } from './demo';
+import { useT } from '@/i18n';
+import type { MessageKey, TranslateFn } from '@/i18n';
 
 interface UseChatOptions {
   initialMessages?: readonly ChatMessage[];
@@ -26,25 +28,25 @@ interface UseChatReturn {
   triggerWelcome: () => void;
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  search_activities: 'Sucht deine Aktivitaeten',
-  get_activity_details: 'Schaut sich einen Workout genauer an',
-  get_daily_metrics: 'Liest deine Gesundheitsdaten',
-  get_weekly_load: 'Berechnet dein Wochenvolumen',
-  web_search: 'Recherchiert im Web',
-  read_athlete_profile: 'Liest dein Profil',
-  update_athlete_section: 'Aktualisiert dein Profil',
-  run_specialist: 'Startet einen Spezialisten-Agenten',
-  evaluate_plan: 'Laesst den Plan bewerten',
-  submit_plan: 'Finalisiert den Plan',
-  submit_evaluation: 'Gibt die Bewertung ab',
-  get_current_plan: 'Liest deinen Plan',
-  update_plan: 'Passt den Plan an',
-  confirm_plan: 'Aktiviert den Plan',
-};
+const KNOWN_TOOLS = new Set<string>([
+  'search_activities',
+  'get_activity_details',
+  'get_daily_metrics',
+  'get_weekly_load',
+  'web_search',
+  'read_athlete_profile',
+  'update_athlete_section',
+  'run_specialist',
+  'evaluate_plan',
+  'submit_plan',
+  'submit_evaluation',
+  'get_current_plan',
+  'update_plan',
+  'confirm_plan',
+]);
 
-function toolLabel(name: string): string {
-  return TOOL_LABELS[name] ?? `Ruft ${name} auf`;
+function toolLabel(t: TranslateFn, name: string): string {
+  return KNOWN_TOOLS.has(name) ? t(`tool.${name}` as MessageKey) : t('tool.fallback', { name });
 }
 
 function makeId(prefix: string): string {
@@ -55,6 +57,7 @@ export function useChat({
   initialMessages = [],
   onStreamComplete,
 }: UseChatOptions = {}): UseChatReturn {
+  const t = useT();
   const [messages, setMessages] = useState<readonly ChatMessage[]>(initialMessages);
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export function useChat({
         );
       },
       onToolCall: (e: ToolCallEvent) => {
-        const label = toolLabel(e.name);
+        const label = toolLabel(t, e.name);
         setToolStatus(label);
         setLiveSteps((prev) => [
           ...prev,
@@ -165,7 +168,7 @@ export function useChat({
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? { ...m, content: m.content || '[Verbindung zum Server fehlgeschlagen]' }
+              ? { ...m, content: m.content || t('chat.connectionFailed') }
               : m,
           ),
         );
@@ -173,7 +176,7 @@ export function useChat({
         streamHandleRef.current = null;
       },
     }),
-    [onStreamComplete, resolveStep],
+    [onStreamComplete, resolveStep, t],
   );
 
   const beginTurn = useCallback((assistantId: string) => {
@@ -209,10 +212,10 @@ export function useChat({
       beginTurn(assistantId);
 
       streamHandleRef.current = DEMO_MODE
-        ? replayScriptedTurn(makeHandlers(assistantId))
+        ? replayScriptedTurn(t, makeHandlers(assistantId))
         : streamChat([...messages, userMessage], makeHandlers(assistantId));
     },
-    [messages, isStreaming, beginTurn, makeHandlers],
+    [messages, isStreaming, beginTurn, makeHandlers, t],
   );
 
   const triggerWelcome = useCallback(() => {
@@ -229,7 +232,7 @@ export function useChat({
     beginTurn(assistantId);
 
     if (DEMO_MODE) {
-      streamHandleRef.current = replayWelcome(makeHandlers(assistantId));
+      streamHandleRef.current = replayWelcome(t, makeHandlers(assistantId));
       return;
     }
 
@@ -240,7 +243,7 @@ export function useChat({
       timestamp: new Date(),
     };
     streamHandleRef.current = streamChat([trigger], makeHandlers(assistantId));
-  }, [messages, isStreaming, beginTurn, makeHandlers]);
+  }, [messages, isStreaming, beginTurn, makeHandlers, t]);
 
   return {
     messages,

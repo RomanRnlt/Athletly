@@ -6,6 +6,7 @@
 import React, { useRef, useState } from 'react';
 import { Mic, Send } from 'lucide-react';
 import { Colors } from '@athletly/shared';
+import { useT } from '@/i18n';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -17,6 +18,7 @@ const LINE_HEIGHT = 20;
 const MAX_INPUT_HEIGHT = MAX_INPUT_LINES * LINE_HEIGHT + 16;
 
 export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
+  const t = useT();
   const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -46,7 +48,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
           disabled={disabled}
           className="h-9 w-9 rounded-full flex items-center justify-center shrink-0"
           style={{ opacity: disabled ? 0.4 : 1 }}
-          aria-label="Spracheingabe"
+          aria-label={t('chat.voiceInput')}
         >
           <Mic size={20} color={Colors.textSecondary} strokeWidth={2} />
         </button>
@@ -59,7 +61,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
             ref={taRef}
             className="flex-1 w-full bg-transparent outline-none resize-none text-text-primary text-base"
             style={{ lineHeight: `${LINE_HEIGHT}px`, paddingTop: 8, paddingBottom: 8, maxHeight: MAX_INPUT_HEIGHT, height: 36 }}
-            placeholder="Nachricht..."
+            placeholder={t('chat.inputPlaceholder')}
             value={text}
             rows={1}
             disabled={disabled}
@@ -83,7 +85,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
             disabled={disabled}
             className="h-9 w-9 rounded-full bg-primary flex items-center justify-center shrink-0"
             style={{ opacity: disabled ? 0.5 : 1 }}
-            aria-label="Nachricht senden"
+            aria-label={t('chat.sendMessage')}
           >
             <Send size={18} color="#FFFFFF" strokeWidth={2} />
           </button>

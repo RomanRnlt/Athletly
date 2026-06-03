@@ -15,30 +15,33 @@ import { Colors } from '@athletly/shared';
 import { getSportLabel } from '@/lib/sport-icons';
 import { useActivities } from '@/lib/use-activities';
 import { useMetrics, type DailyMetric } from '@/lib/use-metrics';
+import { useT, type MessageKey, type TranslateFn } from '@/i18n';
 
 type Mode = 'activities' | 'health';
 
-const HEALTH_CATEGORIES: { key: string; label: string; has: (m: DailyMetric) => boolean }[] = [
-  { key: 'sleep', label: 'Schlaf', has: (m) => m.sleep_score !== null },
-  { key: 'recovery', label: 'Recovery', has: (m) => m.recovery_score !== null },
-  { key: 'hrv', label: 'HRV', has: (m) => m.hrv_avg !== null },
-  { key: 'rhr', label: 'Ruhe-HF', has: (m) => m.resting_heart_rate !== null },
-  { key: 'body_battery', label: 'Body Battery', has: (m) => m.body_battery_high !== null },
-  { key: 'stress', label: 'Stress', has: (m) => m.stress_avg !== null },
-  { key: 'spo2', label: 'SpO2', has: (m) => m.spo2_avg !== null },
-  { key: 'steps', label: 'Schritte', has: (m) => m.steps !== null },
+// Health filter categories. labelKey resolves to the localized chip label.
+const HEALTH_CATEGORIES: { key: string; labelKey: MessageKey; has: (m: DailyMetric) => boolean }[] = [
+  { key: 'sleep', labelKey: 'syncedData.cat.sleep', has: (m) => m.sleep_score !== null },
+  { key: 'recovery', labelKey: 'syncedData.cat.recovery', has: (m) => m.recovery_score !== null },
+  { key: 'hrv', labelKey: 'syncedData.cat.hrv', has: (m) => m.hrv_avg !== null },
+  { key: 'rhr', labelKey: 'syncedData.cat.rhr', has: (m) => m.resting_heart_rate !== null },
+  { key: 'body_battery', labelKey: 'syncedData.cat.body_battery', has: (m) => m.body_battery_high !== null },
+  { key: 'stress', labelKey: 'syncedData.cat.stress', has: (m) => m.stress_avg !== null },
+  { key: 'spo2', labelKey: 'syncedData.cat.spo2', has: (m) => m.spo2_avg !== null },
+  { key: 'steps', labelKey: 'syncedData.cat.steps', has: (m) => m.steps !== null },
 ];
 
 function BackButton() {
   const router = useRouter();
+  const t = useT();
   return (
-    <button type="button" onClick={() => router.back()} aria-label="Zurueck" className="flex items-center">
+    <button type="button" onClick={() => router.back()} aria-label={t('common.back')} className="flex items-center">
       <ChevronLeft size={26} color="#FFFFFF" strokeWidth={2} />
     </button>
   );
 }
 
-function Segmented({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+function Segmented({ mode, onChange, t }: { mode: Mode; onChange: (m: Mode) => void; t: TranslateFn }) {
   return (
     <div className="flex flex-row mx-4 mt-3 p-1 rounded-xl" style={{ backgroundColor: Colors.surfaceNested }}>
       {(['activities', 'health'] as Mode[]).map((m) => {
@@ -52,7 +55,7 @@ function Segmented({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void
             style={{ backgroundColor: active ? Colors.surface : 'transparent' }}
           >
             <span className="text-sm font-semibold" style={{ color: active ? Colors.primary : Colors.textSecondary }}>
-              {m === 'activities' ? 'Aktivitaeten' : 'Gesundheit'}
+              {m === 'activities' ? t('syncedData.activities') : t('syncedData.health')}
             </span>
           </button>
         );
@@ -99,6 +102,7 @@ function FilterRow({ children }: { children: React.ReactNode }) {
 }
 
 export default function SyncedDataScreen() {
+  const t = useT();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('activities');
   const [healthFilter, setHealthFilter] = useState<string | null>(null);
@@ -134,21 +138,25 @@ export default function SyncedDataScreen() {
   return (
     <div className="flex-1 min-h-0 h-full flex flex-col bg-background">
       <GradientHeader
-        title="Synced Data"
-        subtitle={`${count} ${mode === 'activities' ? 'Aktivitaeten' : 'Tage'}`}
+        title={t('syncedData.title')}
+        subtitle={
+          mode === 'activities'
+            ? t('syncedData.countActivities', { count })
+            : t('syncedData.countDays', { count })
+        }
         leftContent={<BackButton />}
       />
 
       <div className="md:max-w-5xl md:mx-auto md:w-full md:px-6">
-      <Segmented mode={mode} onChange={setMode} />
+      <Segmented mode={mode} onChange={setMode} t={t} />
 
       {mode === 'activities' ? (
         <FilterRow>
-          <Chip label="Alle" selected={activities.sportFilter === null} onPress={() => activities.setSportFilter(null)} />
+          <Chip label={t('syncedData.all')} selected={activities.sportFilter === null} onPress={() => activities.setSportFilter(null)} />
           {activities.sports.map((s) => (
             <Chip
               key={s}
-              label={getSportLabel(s)}
+              label={getSportLabel(t, s)}
               selected={activities.sportFilter === s}
               onPress={() => activities.setSportFilter(s)}
             />
@@ -156,11 +164,11 @@ export default function SyncedDataScreen() {
         </FilterRow>
       ) : (
         <FilterRow>
-          <Chip label="Alle" selected={healthFilter === null} onPress={() => setHealthFilter(null)} />
+          <Chip label={t('syncedData.all')} selected={healthFilter === null} onPress={() => setHealthFilter(null)} />
           {availableHealthCategories.map((cat) => (
             <Chip
               key={cat.key}
-              label={cat.label}
+              label={t(cat.labelKey)}
               selected={healthFilter === cat.key}
               onPress={() => setHealthFilter(cat.key)}
             />
@@ -185,9 +193,7 @@ export default function SyncedDataScreen() {
           </div>
         ) : count === 0 ? (
           <div className="flex items-center justify-center px-8 py-12">
-            <p className="text-text-secondary text-sm text-center">
-              Keine Daten. Verbinde Garmin und starte einen Sync in den Einstellungen.
-            </p>
+            <p className="text-text-secondary text-sm text-center">{t('syncedData.empty')}</p>
           </div>
         ) : (
           <div className="md:max-w-5xl md:mx-auto md:w-full md:px-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-x-4">

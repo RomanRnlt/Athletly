@@ -8,6 +8,7 @@
 // ever touching an LLM, a network, or an API key.
 
 import type { ToolCallEvent, ToolResultEvent, StatusEvent } from '../api';
+import type { TranslateFn } from '@/i18n';
 
 interface ReplayHandlers {
   onToken: (delta: string) => void;
@@ -59,68 +60,57 @@ const text = (t: string): ScriptStep => ({ kind: 'text', text: t });
 //   3. Plan generation via a specialist sub-agent (nested depth, evaluator,
 //      submit_plan) so the nested "show work" footer animates.
 
-const WELCOME_TURN: ScriptedTurn = {
-  steps: [
-    text(
-      'Hey, ich bin Ohm, dein Coach. Schoen dass du da bist. Ich sehe deine Garmin-Daten und dein Profil sind verbunden: Halbmarathon-Ziel in rund 10 Wochen, aktuell ~45 km die Woche. Frag mich was zu deinem Training, deiner Erholung oder deinem Plan. Zum Beispiel: "Wie sieht meine Woche aus?" oder "Bin ich heute bereit fuer ein hartes Intervalltraining?"',
-    ),
-  ],
-};
+function welcomeTurn(t: TranslateFn): ScriptedTurn {
+  return { steps: [text(t('demoContent.chat.welcome'))] };
+}
 
-const READINESS_TURN: ScriptedTurn = {
-  steps: [
-    status('Schaut sich deine Daten an'),
-    toolCall('get_daily_metrics', { days: 3 }),
-    toolResult('get_daily_metrics', 'HRV 68ms, RHR 48, Schlaf 82, Recovery 78'),
-    toolCall('get_weekly_load', { weeks: 2 }),
-    toolResult('get_weekly_load', 'Diese Woche 42 km, letzte Woche 39 km (+8%)'),
-    text(
-      'Du bist heute gut erholt. Deine HRV liegt bei 68 ms (im oberen Bereich deiner letzten Wochen), die Ruhe-HF bei 48 und dein Recovery-Score bei 78. Der Schlaf war mit 82 solide. ',
-    ),
-    text(
-      'Dein Wochenvolumen ist mit +8% gegenueber letzter Woche kontrolliert gestiegen. Kurz: gruenes Licht fuer eine harte Einheit. Wenn du heute die Schwellen-Intervalle machst, halte die Pausen wirklich locker (<140 bpm), damit die Achillessehne nicht ueberreizt wird.',
-    ),
-  ],
-};
+function readinessTurn(t: TranslateFn): ScriptedTurn {
+  return {
+    steps: [
+      status(t('demoContent.chat.readiness.status')),
+      toolCall('get_daily_metrics', { days: 3 }),
+      toolResult('get_daily_metrics', t('demoContent.chat.readiness.metricsResult')),
+      toolCall('get_weekly_load', { weeks: 2 }),
+      toolResult('get_weekly_load', t('demoContent.chat.readiness.loadResult')),
+      text(t('demoContent.chat.readiness.text1')),
+      text(t('demoContent.chat.readiness.text2')),
+    ],
+  };
+}
 
-const PLAN_TURN: ScriptedTurn = {
-  steps: [
-    status('Denkt nach'),
-    toolCall('read_athlete_profile', {}),
-    toolResult('read_athlete_profile', 'Ziel: HM 1:35, 4x/Woche, Achillessehne empfindlich'),
-    status('Startet den Plan-Spezialisten', 0, 'coach'),
-    toolCall('run_specialist', { agent: 'plan', task: '2-Wochen-Block HM-Aufbau' }, 0, 'coach'),
-    status('plan-Agent arbeitet', 1, 'plan'),
-    toolCall('search_activities', { sport: 'running', limit: 10 }, 1, 'plan'),
-    toolResult('search_activities', '6 Laeufe, letzter 9.8 km @ 5:31/km', 1, 'plan'),
-    toolCall('get_weekly_load', { weeks: 4 }, 1, 'plan'),
-    toolResult('get_weekly_load', 'Schnitt 41 km/Woche, stabil', 1, 'plan'),
-    status('Laesst den Plan bewerten', 1, 'plan'),
-    toolCall('evaluate_plan', { focus: 'injury_risk' }, 2, 'evaluator'),
-    toolResult('evaluate_plan', 'OK: Umfangsteigerung 8%, 1 harte Einheit/Woche, Score 0.86', 2, 'evaluator'),
-    toolCall('submit_plan', { weeks: 2 }, 1, 'plan'),
-    toolResult('submit_plan', 'Plan gespeichert (2 Wochen, 10 Einheiten)', 1, 'plan'),
-    toolResult('run_specialist', 'Plan-Spezialist fertig', 0, 'coach'),
-    text(
-      'Fertig. Ich habe dir einen 2-Wochen-Block gebaut, den du jetzt im Plan-Tab siehst. ',
-    ),
-    text(
-      'Der Aufbau: zwei Schluesseleinheiten pro Woche (Schwellen-Intervalle am Mittwoch, langer Lauf am Sonntag), dazu zwei lockere Dauerlaeufe und eine Krafteinheit fuer die Achillessehne. ',
-    ),
-    text(
-      'Der Umfang steigt von 18 auf 20 km im langen Lauf und insgesamt um rund 8% pro Woche, also bewusst konservativ wegen der Sehne. Schau ihn dir an und sag mir, wenn du etwas verschieben willst.',
-    ),
-  ],
-};
+function planTurn(t: TranslateFn): ScriptedTurn {
+  return {
+    steps: [
+      status(t('demoContent.chat.plan.statusThinking')),
+      toolCall('read_athlete_profile', {}),
+      toolResult('read_athlete_profile', t('demoContent.chat.plan.profileResult')),
+      status(t('demoContent.chat.plan.statusStartSpecialist'), 0, 'coach'),
+      toolCall('run_specialist', { agent: 'plan', task: t('demoContent.chat.plan.taskLabel') }, 0, 'coach'),
+      status(t('demoContent.chat.plan.statusPlanWorking'), 1, 'plan'),
+      toolCall('search_activities', { sport: 'running', limit: 10 }, 1, 'plan'),
+      toolResult('search_activities', t('demoContent.chat.plan.searchResult'), 1, 'plan'),
+      toolCall('get_weekly_load', { weeks: 4 }, 1, 'plan'),
+      toolResult('get_weekly_load', t('demoContent.chat.plan.loadResult'), 1, 'plan'),
+      status(t('demoContent.chat.plan.statusEvaluate'), 1, 'plan'),
+      toolCall('evaluate_plan', { focus: 'injury_risk' }, 2, 'evaluator'),
+      toolResult('evaluate_plan', t('demoContent.chat.plan.evalResult'), 2, 'evaluator'),
+      toolCall('submit_plan', { weeks: 2 }, 1, 'plan'),
+      toolResult('submit_plan', t('demoContent.chat.plan.submitResult'), 1, 'plan'),
+      toolResult('run_specialist', t('demoContent.chat.plan.specialistDone'), 0, 'coach'),
+      text(t('demoContent.chat.plan.text1')),
+      text(t('demoContent.chat.plan.text2')),
+      text(t('demoContent.chat.plan.text3')),
+    ],
+  };
+}
 
 // First turn shown via triggerWelcome; subsequent user messages cycle through
 // the remaining scripted turns, then loop back to the readiness turn.
-const SCRIPTED_TURNS: ScriptedTurn[] = [READINESS_TURN, PLAN_TURN];
-
 let turnCursor = 0;
 
-function nextTurn(): ScriptedTurn {
-  const turn = SCRIPTED_TURNS[turnCursor % SCRIPTED_TURNS.length];
+function nextTurn(t: TranslateFn): ScriptedTurn {
+  const builders = [readinessTurn, planTurn];
+  const turn = builders[turnCursor % builders.length](t);
   turnCursor += 1;
   return turn;
 }
@@ -204,12 +194,12 @@ function playTurn(turn: ScriptedTurn, handlers: ReplayHandlers): StreamHandle {
 }
 
 /** Replay the proactive opening (welcome) turn. */
-export function replayWelcome(handlers: ReplayHandlers): StreamHandle {
+export function replayWelcome(t: TranslateFn, handlers: ReplayHandlers): StreamHandle {
   turnCursor = 0;
-  return playTurn(WELCOME_TURN, handlers);
+  return playTurn(welcomeTurn(t), handlers);
 }
 
 /** Replay the next scripted assistant turn in response to a user message. */
-export function replayScriptedTurn(handlers: ReplayHandlers): StreamHandle {
-  return playTurn(nextTurn(), handlers);
+export function replayScriptedTurn(t: TranslateFn, handlers: ReplayHandlers): StreamHandle {
+  return playTurn(nextTurn(t), handlers);
 }

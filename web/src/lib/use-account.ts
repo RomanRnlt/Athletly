@@ -12,10 +12,10 @@ import { DEMO_MODE } from './demo';
  * Fetch the full account data export (GDPR Art. 20) and trigger a JSON file
  * download in the browser.
  */
-export async function exportAccountData(): Promise<void> {
+export async function exportAccountData(demoMessage?: string): Promise<void> {
   if (DEMO_MODE) {
-    if (typeof window !== 'undefined') {
-      window.alert('Demo-Modus: Der Datenexport ist in dieser oeffentlichen Demo deaktiviert.');
+    if (typeof window !== 'undefined' && demoMessage) {
+      window.alert(demoMessage);
     }
     return;
   }
@@ -36,10 +36,10 @@ export async function exportAccountData(): Promise<void> {
  * Irreversibly delete the account and all its data (GDPR Art. 17), then sign
  * out locally so the auth listener routes the user back to /login.
  */
-export async function deleteAccount(): Promise<void> {
+export async function deleteAccount(demoMessage?: string): Promise<void> {
   if (DEMO_MODE) {
-    if (typeof window !== 'undefined') {
-      window.alert('Demo-Modus: Das Loeschen des Accounts ist in dieser oeffentlichen Demo deaktiviert.');
+    if (typeof window !== 'undefined' && demoMessage) {
+      window.alert(demoMessage);
     }
     return;
   }

@@ -4,6 +4,7 @@
 // Ported 1:1 from mobile/components/chat/OnboardingBar.tsx.
 import React from 'react';
 import { Colors } from '@athletly/shared';
+import { useT } from '@/i18n';
 
 const ONBOARDING_TARGET_SECTIONS = 5;
 
@@ -12,6 +13,7 @@ interface OnboardingBarProps {
 }
 
 export function OnboardingBar({ filledSections }: OnboardingBarProps) {
+  const t = useT();
   const clamped = Math.min(filledSections, ONBOARDING_TARGET_SECTIONS);
   const percent = Math.round((clamped / ONBOARDING_TARGET_SECTIONS) * 100);
 
@@ -21,7 +23,7 @@ export function OnboardingBar({ filledSections }: OnboardingBarProps) {
       style={{ borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: Colors.primaryLight }}
     >
       <div className="flex flex-row items-center justify-between mb-1.5">
-        <span className="text-text-secondary text-xs font-medium">Erstgespraech mit Ohm</span>
+        <span className="text-text-secondary text-xs font-medium">{t('onboarding.title')}</span>
         <span className="text-primary text-xs font-semibold">
           {clamped} / {ONBOARDING_TARGET_SECTIONS}
         </span>

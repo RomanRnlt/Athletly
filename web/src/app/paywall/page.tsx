@@ -13,14 +13,15 @@ import { Sparkles, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Colors, BRAND_GRADIENT } from '@athletly/shared';
 import { notify } from '@/lib/dialog';
+import { useT, type MessageKey } from '@/i18n';
 
 const FALLBACK_MONTHLY = '9,99 EUR';
 
-const BENEFITS = [
-  'Deutlich mehr KI-Coaching pro Monat',
-  'Unbegrenzte Trainingsplaene',
-  'Tiefe Analysen deiner Gesundheitsdaten',
-  'Frueher Zugang zu neuen Features',
+const BENEFIT_KEYS: MessageKey[] = [
+  'paywall.benefit1',
+  'paywall.benefit2',
+  'paywall.benefit3',
+  'paywall.benefit4',
 ];
 
 function Benefit({ children }: { children: string }) {
@@ -37,17 +38,16 @@ function Benefit({ children }: { children: string }) {
 const CARD_SHADOW = '0 4px 16px rgba(0,0,0,0.08)';
 
 export default function PaywallScreen() {
+  const t = useT();
   const router = useRouter();
   const monthlyPrice = FALLBACK_MONTHLY;
 
   const buy = () => {
-    notify(
-      'Kaeufe sind in der Web-Version nicht verfuegbar. Bitte upgrade in der mobilen App auf Pro.',
-    );
+    notify(t('paywall.buyNotice'));
   };
 
   const restore = () => {
-    notify('Kaeufe wiederherstellen ist nur in der mobilen App verfuegbar.');
+    notify(t('paywall.restoreNotice'));
   };
 
   return (
@@ -61,17 +61,15 @@ export default function PaywallScreen() {
         <div className="mb-6 mt-2">
           <Sparkles size={36} color="#FFFFFF" />
           <h1 className="text-white text-3xl font-bold mt-3" style={{ letterSpacing: -0.5 }}>
-            Athletly Pro
+            {t('paywall.title')}
           </h1>
-          <p className="text-white/80 text-base mt-2">
-            Mehr Coaching, mehr Plaene, mehr aus deinen Daten.
-          </p>
+          <p className="text-white/80 text-base mt-2">{t('paywall.subtitle')}</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 flex flex-col gap-5" style={{ boxShadow: CARD_SHADOW }}>
           <div className="flex flex-col gap-3">
-            {BENEFITS.map((b) => (
-              <Benefit key={b}>{b}</Benefit>
+            {BENEFIT_KEYS.map((key) => (
+              <Benefit key={key}>{t(key)}</Benefit>
             ))}
           </div>
 
@@ -80,15 +78,13 @@ export default function PaywallScreen() {
             <Button
               variant="primary"
               size="lg"
-              label={`Pro - ${monthlyPrice} / Monat`}
+              label={t('paywall.ctaBuy', { price: monthlyPrice })}
               onPress={buy}
             />
-            <Button variant="ghost" size="md" label="Kaeufe wiederherstellen" onPress={restore} />
+            <Button variant="ghost" size="md" label={t('paywall.ctaRestore')} onPress={restore} />
           </div>
 
-          <p className="text-text-muted text-xs text-center leading-4">
-            Kaeufe sind in der Web-Version nicht aktiv. Nutze die mobile App fuer das Pro-Upgrade.
-          </p>
+          <p className="text-text-muted text-xs text-center leading-4">{t('paywall.fineprint')}</p>
         </div>
       </div>
     </div>

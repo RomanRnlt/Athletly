@@ -9,10 +9,11 @@ import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon } from '@/lib/sport-icons';
 import { Colors } from '@athletly/shared';
 import type { DayPlan, PlannedSession } from '@athletly/shared';
-
-const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
+import { useT, useI18n } from '@/i18n';
+import { weekdayNameShort } from '@/lib/datetime';
 
 const RING_SIZE = 38;
+// (weekday labels are derived per-locale via weekdayNameShort)
 const RING_STROKE = 3;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -97,13 +98,18 @@ function ProgressRing({ size, progress, ringColor, isRest, sessions }: ProgressR
 }
 
 export function WeekStrip({ weekStart, days, selectedDate, onSelectDate }: WeekStripProps) {
+  const t = useT();
+  const { intlLocale } = useI18n();
   const today = getTodayISO();
 
   return (
     <div className="flex flex-row justify-between px-1 py-2">
-      {DAY_LABELS.map((label, index) => {
+      {[0, 1, 2, 3, 4, 5, 6].map((index) => {
         const date = getDateForDay(weekStart, index);
-        const dayNumber = new Date(date + 'T12:00:00').getDate();
+        const dayDate = new Date(date + 'T12:00:00');
+        // Monday-first strip: weekday index for label uses the actual date.
+        const label = weekdayNameShort(intlLocale, dayDate.getDay());
+        const dayNumber = dayDate.getDate();
         const isToday = date === today;
         const isSelected = date === selectedDate;
         const dayPlan = getDayPlanForDate(days, date);
@@ -137,7 +143,7 @@ export function WeekStrip({ weekStart, days, selectedDate, onSelectDate }: WeekS
             />
 
             <span className="text-[10px] mt-1" style={{ color: isToday ? Colors.primary : Colors.textMuted }}>
-              {isToday ? 'Heute' : dayNumber}
+              {isToday ? t('plan.today') : dayNumber}
             </span>
           </button>
         );

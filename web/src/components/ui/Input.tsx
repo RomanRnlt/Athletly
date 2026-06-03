@@ -5,6 +5,7 @@
 // same label/leftIcon/password-toggle layout and focus border behavior.
 import React, { useState } from 'react';
 import { Eye, EyeOff, type LucideIcon } from 'lucide-react';
+import { useT } from '@/i18n';
 
 interface InputProps {
   label?: string;
@@ -33,6 +34,7 @@ export function Input({
   keyboardType,
   onSubmit,
 }: InputProps) {
+  const t = useT();
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -81,7 +83,7 @@ export function Input({
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
             className="ml-2 flex items-center"
-            aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+            aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
           >
             {showPassword ? (
               <EyeOff size={20} color="#94A3B8" strokeWidth={2} />

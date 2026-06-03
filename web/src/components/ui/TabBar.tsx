@@ -10,20 +10,23 @@ import { usePathname } from 'next/navigation';
 import { Calendar, MessageCircle, Settings, type LucideIcon } from 'lucide-react';
 import { Colors } from '@athletly/shared';
 import { useAthleteProfile } from '@/lib/use-profile';
+import { useT } from '@/i18n';
+import type { MessageKey } from '@/i18n';
 
 interface TabDef {
   href: string;
-  label: string;
+  labelKey: MessageKey;
   icon: LucideIcon;
 }
 
 const TABS: TabDef[] = [
-  { href: '/plan', label: 'Plan', icon: Calendar },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/settings', label: 'Einstellungen', icon: Settings },
+  { href: '/plan', labelKey: 'nav.plan', icon: Calendar },
+  { href: '/chat', labelKey: 'nav.chat', icon: MessageCircle },
+  { href: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 export function TabBar() {
+  const t = useT();
   const pathname = usePathname();
   const { onboardingCompleted, isLoading } = useAthleteProfile();
   const showChatBadge = !isLoading && !onboardingCompleted;
@@ -58,7 +61,7 @@ export function TabBar() {
               )}
             </span>
             <span style={{ color, fontSize: 10 }} className="mt-0.5">
-              {tab.label}
+              {t(tab.labelKey)}
             </span>
           </Link>
         );

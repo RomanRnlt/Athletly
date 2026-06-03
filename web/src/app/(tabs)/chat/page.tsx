@@ -15,21 +15,20 @@ import { useChat } from '@/lib/use-chat';
 import { useAthleteProfile } from '@/lib/use-profile';
 import { useUsage } from '@/lib/use-usage';
 import { Colors } from '@athletly/shared';
+import { useT, type TranslateFn } from '@/i18n';
 
-function CreditLimitBanner({ onUpgrade }: { onUpgrade: () => void }) {
+function CreditLimitBanner({ onUpgrade, t }: { onUpgrade: () => void; t: TranslateFn }) {
   return (
     <button
       type="button"
       onClick={onUpgrade}
       className="mx-4 mb-2 px-4 py-3 rounded-2xl bg-primary-light flex flex-row items-center gap-3 text-left"
-      aria-label="Auf Pro upgraden"
+      aria-label={t('chat.upgradeAria')}
     >
       <Crown size={18} color={Colors.primary} />
       <div className="flex-1">
-        <p className="text-text-primary text-sm font-semibold">KI-Limit erreicht</p>
-        <p className="text-text-secondary text-xs mt-0.5">
-          Dein Kontingent ist aufgebraucht. Tippe fuer Upgrade auf Pro.
-        </p>
+        <p className="text-text-primary text-sm font-semibold">{t('chat.creditLimitTitle')}</p>
+        <p className="text-text-secondary text-xs mt-0.5">{t('chat.creditLimitBody')}</p>
       </div>
     </button>
   );
@@ -46,26 +45,32 @@ function StatusDot({ online }: { online: boolean }) {
   );
 }
 
-function EmptyState({ onboarding }: { onboarding: boolean }) {
+function EmptyState({ onboarding, t }: { onboarding: boolean; t: TranslateFn }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8">
-      <p className="text-text-primary text-base font-medium mb-2">{onboarding ? 'Willkommen!' : 'Hi.'}</p>
+      <p className="text-text-primary text-base font-medium mb-2">
+        {onboarding ? t('chat.emptyWelcomeTitle') : t('chat.emptyHiTitle')}
+      </p>
       <p className="text-text-secondary text-sm text-center leading-5 max-w-md">
-        {onboarding
-          ? 'Sag Ohm "Hi" damit er dich kennenlernen kann. Er fragt dich ein paar Sachen ueber dich und dein Training, damit er dich danach richtig coachen kann.'
-          : 'Frag mich was zu deinem Training, deinem Schlaf oder deinem Wochenvolumen. Wenn deine Garmin-Daten verbunden sind kann ich konkrete Zahlen ziehen.'}
+        {onboarding ? t('chat.emptyOnboarding') : t('chat.emptyDefault')}
       </p>
     </div>
   );
 }
 
-function subtitleFor(isStreaming: boolean, toolStatus: string | null, onboarding: boolean): string {
-  if (toolStatus) return `${toolStatus}...`;
-  if (isStreaming) return 'Ohm schreibt...';
-  return onboarding ? 'Erstgespraech laeuft' : 'Ohm ist online';
+function subtitleFor(
+  t: TranslateFn,
+  isStreaming: boolean,
+  toolStatus: string | null,
+  onboarding: boolean,
+): string {
+  if (toolStatus) return t('chat.subtitleTool', { status: toolStatus });
+  if (isStreaming) return t('chat.subtitleStreaming');
+  return onboarding ? t('chat.subtitleOnboarding') : t('chat.subtitleOnline');
 }
 
 export default function ChatScreen() {
+  const t = useT();
   const router = useRouter();
   const profile = useAthleteProfile();
   const { exhausted, refresh: refreshUsage } = useUsage();
@@ -115,8 +120,8 @@ export default function ChatScreen() {
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0">
       <GradientHeader
-        title="Chat"
-        subtitle={subtitleFor(isStreaming, toolStatus, showOnboardingBar)}
+        title={t('chat.title')}
+        subtitle={subtitleFor(t, isStreaming, toolStatus, showOnboardingBar)}
         rightContent={<StatusDot online={!error} />}
         contentMaxWidthClass="md:max-w-[760px]"
       />
@@ -124,7 +129,7 @@ export default function ChatScreen() {
       {showOnboardingBar && <OnboardingBar filledSections={profile.filledSections} />}
 
       {isEmpty ? (
-        <EmptyState onboarding={showOnboardingBar} />
+        <EmptyState onboarding={showOnboardingBar} t={t} />
       ) : (
         <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 pt-3 pb-3 md:px-10 md:pt-8">
           <div className="flex flex-col w-full mx-auto md:max-w-[760px]">
@@ -148,7 +153,7 @@ export default function ChatScreen() {
 
       {exhausted && (
         <div className="w-full mx-auto md:max-w-[760px]">
-          <CreditLimitBanner onUpgrade={() => router.push('/paywall')} />
+          <CreditLimitBanner onUpgrade={() => router.push('/paywall')} t={t} />
         </div>
       )}
 

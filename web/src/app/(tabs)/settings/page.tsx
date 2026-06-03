@@ -42,6 +42,8 @@ import { deleteAccount, exportAccountData } from '@/lib/use-account';
 import { Colors } from '@athletly/shared';
 import { confirmAction, notify } from '@/lib/dialog';
 import { DEMO_MODE } from '@/lib/demo';
+import { useI18n, useT, type TranslateFn } from '@/i18n';
+import type { Locale } from '@/i18n';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -62,26 +64,72 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   );
 }
 
-function formatResetDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
+// Compact DE/EN segmented toggle shown in the settings "Language" row. Setting
+// the locale persists it and updates <html lang> via the i18n provider.
+function LanguageToggle({
+  locale,
+  onChange,
+  t,
+}: {
+  locale: Locale;
+  onChange: (next: Locale) => void;
+  t: TranslateFn;
+}) {
+  const options: { value: Locale; label: string }[] = [
+    { value: 'de', label: 'DE' },
+    { value: 'en', label: 'EN' },
+  ];
+  return (
+    <div
+      className="flex flex-row rounded-lg p-0.5"
+      style={{ backgroundColor: Colors.surfaceNested }}
+      role="group"
+      aria-label={t('settings.language')}
+    >
+      {options.map((opt) => {
+        const active = locale === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            aria-pressed={active}
+            className="px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+            style={{
+              backgroundColor: active ? Colors.surface : 'transparent',
+              color: active ? Colors.primary : Colors.textSecondary,
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
-function formatRelative(iso: string | null): string | null {
+function formatResetDate(intlLocale: string, iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(intlLocale, { day: 'numeric', month: 'long' });
+}
+
+function formatRelative(t: TranslateFn, iso: string | null): string | null {
   if (!iso) return null;
   const ms = Date.now() - new Date(iso).getTime();
   if (Number.isNaN(ms)) return null;
   const min = Math.floor(ms / 60_000);
-  if (min < 1) return 'Gerade eben';
-  if (min < 60) return `Vor ${min} Min.`;
+  if (min < 1) return t('time.justNow');
+  if (min < 60) return t('time.minutesAgo', { n: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `Vor ${h} Std.`;
+  if (h < 24) return t('time.hoursAgo', { n: h });
   const d = Math.floor(h / 24);
-  return `Vor ${d} Tag${d > 1 ? 'en' : ''}`;
+  return d > 1 ? t('time.daysAgoMany', { n: d }) : t('time.daysAgoOne', { n: d });
 }
 
 export default function SettingsScreen() {
+  const t = useT();
+  const { locale, setLocale, intlLocale } = useI18n();
   const router = useRouter();
   const { session } = useAuth();
   const { status, isSyncing, error, refresh, sync, disconnect } = useGarmin();
@@ -99,38 +147,37 @@ export default function SettingsScreen() {
     const result = await sync();
     if (result) {
       notify(
-        `Sync abgeschlossen: ${result.activities_synced} Aktivitaeten und ${result.daily_metrics_synced} Tage Gesundheitsdaten geladen.`,
+        t('settings.syncDone', {
+          activities: result.activities_synced,
+          days: result.daily_metrics_synced,
+        }),
       );
     }
   };
 
   const handleDisconnect = () => {
-    if (confirmAction('Verbindung loeschen und alle Garmin-Daten aus der lokalen DB entfernen?')) {
+    if (confirmAction(t('settings.disconnectConfirm'))) {
       disconnect();
     }
   };
 
   const performReset = async () => {
     if (DEMO_MODE) {
-      notify('Demo-Modus: Das Zuruecksetzen der Daten ist in dieser Demo deaktiviert.');
+      notify(t('demo.resetDisabled'));
       return;
     }
     try {
       await apiPost<{ status: string }>('/account/reset', {});
       await refresh();
-      notify('Zurueckgesetzt: Athlete-Profil, Garmin-Daten und Verbindung wurden geloescht.');
+      notify(t('settings.resetDone'));
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Reset fehlgeschlagen';
-      notify(`Reset fehlgeschlagen: ${message}`);
+      const message = err instanceof ApiError ? err.message : t('settings.resetFailed');
+      notify(t('settings.resetFailedWith', { message }));
     }
   };
 
   const handleReset = () => {
-    if (
-      confirmAction(
-        'Dies loescht dein Athlete-Profil, alle synchronisierten Garmin-Daten und die Garmin-Verbindung. Deine Anmeldung bleibt erhalten. Fortfahren?',
-      )
-    ) {
+    if (confirmAction(t('settings.resetConfirm'))) {
       performReset();
     }
   };
@@ -138,58 +185,50 @@ export default function SettingsScreen() {
   const handleExport = async () => {
     setBusy(true);
     try {
-      await exportAccountData();
+      await exportAccountData(t('demo.exportDisabled'));
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Export fehlgeschlagen';
-      notify(`Export fehlgeschlagen: ${message}`);
+      const message = err instanceof ApiError ? err.message : t('settings.exportFailed');
+      notify(t('settings.exportFailedWith', { message }));
     } finally {
       setBusy(false);
     }
   };
 
   const handleWithdrawConsent = () => {
-    if (
-      confirmAction(
-        'Ohne Einwilligung kann Athletly deine Gesundheitsdaten nicht mehr verarbeiten und dich nicht coachen. Du wirst zum Einwilligungsbildschirm geleitet. Widerrufen?',
-      )
-    ) {
-      setConsent(false).catch(() => notify('Widerruf fehlgeschlagen. Bitte erneut versuchen.'));
+    if (confirmAction(t('settings.withdrawConsentConfirm'))) {
+      setConsent(false).catch(() => notify(t('settings.withdrawFailed')));
     }
   };
 
   const performDelete = async () => {
     setBusy(true);
     try {
-      await deleteAccount();
+      await deleteAccount(t('demo.deleteDisabled'));
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Loeschung fehlgeschlagen';
-      notify(`Loeschung fehlgeschlagen: ${message}`);
+      const message = err instanceof ApiError ? err.message : t('settings.deleteFailed');
+      notify(t('settings.deleteFailedWith', { message }));
     } finally {
       setBusy(false);
     }
   };
 
   const handleDeleteAccount = () => {
-    if (
-      confirmAction(
-        'Dies loescht deinen Account und ALLE Daten unwiderruflich: Profil, Trainings- und Gesundheitsdaten, Plaene und Garmin-Verbindung. Dies kann nicht rueckgaengig gemacht werden. Endgueltig loeschen?',
-      )
-    ) {
+    if (confirmAction(t('settings.deleteConfirm'))) {
       performDelete();
     }
   };
 
   const handleSignOut = () => {
-    if (confirmAction('Aktuelle Session beenden?')) signOut();
+    if (confirmAction(t('settings.signOutConfirm'))) signOut();
   };
 
   const garminConnected = status?.connected ?? false;
-  const accountEmail = session?.user?.email ?? 'unbekannter Account';
+  const accountEmail = session?.user?.email ?? t('settings.unknownAccount');
   const accountCreatedAt = session?.user?.created_at;
 
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0">
-      <GradientHeader title="Einstellungen" contentMaxWidthClass="md:max-w-4xl" />
+      <GradientHeader title={t('settings.title')} contentMaxWidthClass="md:max-w-4xl" />
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-8 md:pb-12">
        <div className="mx-auto w-full md:max-w-4xl md:px-10 md:pt-6">
@@ -205,7 +244,7 @@ export default function SettingsScreen() {
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow
               icon={Sparkles}
-              label="Wie Athletly dich sieht"
+              label={t('settings.howAthletlySeesYou')}
               onPress={() => router.push('/athlete-profile')}
               isLast
             />
@@ -214,7 +253,7 @@ export default function SettingsScreen() {
 
         {/* Two balanced columns on desktop; single stack on mobile. */}
         <div className="md:columns-2 md:gap-8">
-        <Section title="Verbundene Dienste">
+        <Section title={t('settings.sectionServices')}>
           <Card variant="standard" className="p-0 overflow-hidden">
             <ServiceStatus
               name="Garmin Connect"
@@ -225,10 +264,10 @@ export default function SettingsScreen() {
               onDisconnect={handleDisconnect}
             />
             <ServiceStatus
-              name="Apple Health"
+              name={t('settings.appleHealth')}
               icon={Heart}
               isConnected={false}
-              onConnect={() => notify('Apple Health: Noch nicht implementiert.')}
+              onConnect={() => notify(t('settings.appleHealthNotImplemented'))}
               isLast
             />
           </Card>
@@ -239,13 +278,17 @@ export default function SettingsScreen() {
                 type="button"
                 onClick={() => router.push('/synced-data')}
                 className="flex-1 flex flex-row items-center px-2 py-2 text-left"
-                aria-label="Synced Data ansehen"
+                aria-label={t('settings.syncedDataAria')}
               >
                 <div className="flex-1">
-                  <p className="text-text-primary text-sm font-medium">Synced Data</p>
+                  <p className="text-text-primary text-sm font-medium">{t('settings.syncedData')}</p>
                   <p className="text-text-muted text-xs mt-0.5">
-                    {status?.activity_count ?? 0} Aktivitaeten ·{' '}
-                    {formatRelative(status?.last_sync_at ?? null) ?? 'Noch nie synchronisiert'}
+                    {t('settings.syncedSummary', {
+                      count: status?.activity_count ?? 0,
+                      sync:
+                        formatRelative(t, status?.last_sync_at ?? null) ??
+                        t('settings.neverSynced'),
+                    })}
                   </p>
                 </div>
                 <ChevronRight size={18} color={Colors.textMuted} />
@@ -255,7 +298,7 @@ export default function SettingsScreen() {
                   variant="primary"
                   size="sm"
                   icon={RefreshCw}
-                  label={isSyncing ? 'Synct...' : 'Sync'}
+                  label={isSyncing ? t('settings.syncing') : t('settings.sync')}
                   onPress={handleSync}
                   loading={isSyncing}
                   disabled={isSyncing}
@@ -265,71 +308,75 @@ export default function SettingsScreen() {
           )}
         </Section>
 
-        <Section title="Einstellungen">
+        <Section title={t('settings.sectionSettings')}>
           <Card variant="standard" className="p-0 overflow-hidden">
-            <SettingsRow icon={Bell} label="Benachrichtigungen" value="An" onPress={() => {}} />
-            <SettingsRow icon={Globe} label="Sprache" value="Deutsch" onPress={() => {}} />
-            <SettingsRow icon={Moon} label="Erscheinungsbild" value="Hell" onPress={() => {}} isLast />
+            <SettingsRow icon={Bell} label={t('settings.notifications')} value={t('common.on')} onPress={() => {}} />
+            <SettingsRow
+              icon={Globe}
+              label={t('settings.language')}
+              rightElement={<LanguageToggle locale={locale} onChange={setLocale} t={t} />}
+            />
+            <SettingsRow icon={Moon} label={t('settings.appearance')} value={t('settings.appearanceLight')} onPress={() => {}} isLast />
           </Card>
         </Section>
 
-        <Section title="KI-Nutzung">
+        <Section title={t('settings.sectionAiUsage')}>
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow
               icon={Zap}
-              label="KI-Credits"
+              label={t('settings.aiCredits')}
               value={
                 usage == null
                   ? '...'
                   : usage.limit == null
-                    ? `${usage.used} genutzt`
-                    : `${usage.used} / ${usage.limit}`
+                    ? t('settings.creditsUsed', { used: usage.used })
+                    : t('settings.creditsUsedOfLimit', { used: usage.used, limit: usage.limit })
               }
             />
             <SettingsRow
-              label="Reset"
-              value={usage ? `am ${formatResetDate(usage.resetsAt)}` : '-'}
+              label={t('settings.reset')}
+              value={usage ? t('settings.resetOn', { date: formatResetDate(intlLocale, usage.resetsAt) }) : '-'}
               isLast={usage?.tier === 'pro' || usage?.tier === 'grandfather'}
             />
             {usage && usage.tier !== 'pro' && usage.tier !== 'grandfather' && (
               <SettingsRow
                 icon={Crown}
-                label="Upgrade auf Pro"
+                label={t('settings.upgradeToPro')}
                 onPress={() => router.push('/paywall')}
                 isLast
               />
             )}
           </Card>
           {usage?.tier === 'grandfather' && (
-            <p className="text-text-muted text-xs px-4 md:px-0 mt-1.5">Unbegrenzter Zugang (Grandfather).</p>
+            <p className="text-text-muted text-xs px-4 md:px-0 mt-1.5">{t('settings.grandfatherNote')}</p>
           )}
         </Section>
 
-        <Section title="Datenschutz & DSGVO">
+        <Section title={t('settings.sectionPrivacy')}>
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow
               icon={ShieldCheck}
-              label="Einwilligung Gesundheitsdaten"
-              value={consent?.granted ? 'Erteilt' : 'Offen'}
+              label={t('settings.consentHealthData')}
+              value={consent?.granted ? t('settings.consentGranted') : t('settings.consentOpen')}
               onPress={consent?.granted ? handleWithdrawConsent : undefined}
             />
             <SettingsRow
               icon={Download}
-              label="Meine Daten exportieren"
+              label={t('settings.exportMyData')}
               onPress={busy ? undefined : handleExport}
             />
-            <SettingsRow icon={Lock} label="Datenschutzerklaerung" onPress={() => {}} isLast />
+            <SettingsRow icon={Lock} label={t('settings.privacyPolicy')} onPress={() => {}} isLast />
           </Card>
         </Section>
 
-        <Section title="Account">
+        <Section title={t('settings.sectionAccount')}>
           <Card variant="standard" className="p-0 overflow-hidden">
-            <SettingsRow icon={HelpCircle} label="Hilfe & Support" onPress={() => {}} />
-            <SettingsRow icon={RotateCcw} label="Alle Daten zuruecksetzen" onPress={handleReset} isDestructive />
-            <SettingsRow icon={LogOut} label="Abmelden" onPress={handleSignOut} isDestructive />
+            <SettingsRow icon={HelpCircle} label={t('settings.helpSupport')} onPress={() => {}} />
+            <SettingsRow icon={RotateCcw} label={t('settings.resetAllData')} onPress={handleReset} isDestructive />
+            <SettingsRow icon={LogOut} label={t('settings.signOut')} onPress={handleSignOut} isDestructive />
             <SettingsRow
               icon={Trash2}
-              label="Account loeschen"
+              label={t('settings.deleteAccount')}
               onPress={busy ? undefined : handleDeleteAccount}
               isDestructive
               isLast

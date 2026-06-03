@@ -3,20 +3,12 @@
 
 // Ported 1:1 from mobile/components/profile/ProfileHeader.tsx.
 import React from 'react';
+import { useI18n } from '@/i18n';
+import { monthName } from '@/lib/datetime';
 
 interface ProfileHeaderProps {
   email: string;
   createdAt?: string;
-}
-
-const MONTHS = [
-  'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',
-  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-];
-
-function formatMemberSince(dateStr: string): string {
-  const date = new Date(dateStr);
-  return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function getInitial(email: string): string {
@@ -24,8 +16,14 @@ function getInitial(email: string): string {
 }
 
 export function ProfileHeader({ email, createdAt }: ProfileHeaderProps) {
+  const { t, intlLocale } = useI18n();
   const initial = getInitial(email);
-  const memberSince = createdAt ? formatMemberSince(createdAt) : undefined;
+  const memberSince = createdAt
+    ? (() => {
+        const date = new Date(createdAt);
+        return `${monthName(intlLocale, date.getMonth())} ${date.getFullYear()}`;
+      })()
+    : undefined;
 
   return (
     <div className="flex flex-col items-center py-6 px-4">
@@ -33,7 +31,7 @@ export function ProfileHeader({ email, createdAt }: ProfileHeaderProps) {
         <span className="text-primary text-3xl font-bold">{initial}</span>
       </div>
       <p className="text-text-secondary text-base mb-1">{email}</p>
-      {memberSince && <p className="text-text-muted text-xs">Mitglied seit {memberSince}</p>}
+      {memberSince && <p className="text-text-muted text-xs">{t('profileHeader.memberSince', { date: memberSince })}</p>}
     </div>
   );
 }

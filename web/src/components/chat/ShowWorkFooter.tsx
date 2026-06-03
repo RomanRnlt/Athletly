@@ -6,6 +6,7 @@ import React, { useCallback, useState } from 'react';
 import { ChevronDown, ChevronRight, Check, AlertCircle } from 'lucide-react';
 import { Colors } from '@athletly/shared';
 import type { ToolStep } from '@athletly/shared';
+import { useT } from '@/i18n';
 
 const INDENT_PER_DEPTH = 14;
 
@@ -37,6 +38,7 @@ function FooterStepRow({ step }: { step: ToolStep }) {
 }
 
 export function ShowWorkFooter({ steps }: { steps: readonly ToolStep[] }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const toggle = useCallback(() => setExpanded((p) => !p), []);
 
@@ -50,11 +52,11 @@ export function ShowWorkFooter({ steps }: { steps: readonly ToolStep[] }) {
         type="button"
         onClick={toggle}
         className="flex flex-row items-center gap-1 py-1"
-        aria-label={expanded ? 'Werkzeugliste einklappen' : 'Werkzeugliste ausklappen'}
+        aria-label={expanded ? t('showWork.collapse') : t('showWork.expand')}
       >
         <ChevronIcon size={12} color={Colors.textMuted} strokeWidth={2} />
         <span className="text-xs font-medium" style={{ color: Colors.textMuted }}>
-          Werkzeuge verwendet ({steps.length})
+          {t('showWork.toolsUsed', { count: steps.length })}
         </span>
       </button>
       {expanded ? steps.map((step) => <FooterStepRow key={step.id} step={step} />) : null}

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import { DEMO_MODE, DEMO_ACTIVITIES, DEMO_SPORTS } from './demo';
+import { useT } from '@/i18n';
 
 export interface Activity {
   garmin_activity_id: string;
@@ -37,6 +38,7 @@ interface UseActivitiesReturn {
 }
 
 export function useActivities(): UseActivitiesReturn {
+  const t = useT();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [sports, setSports] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,11 +63,11 @@ export function useActivities(): UseActivitiesReturn {
       setActivities(data.activities);
       if (!sport) setSports(data.sports);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Aktivitaeten konnten nicht geladen werden');
+      setError(err instanceof ApiError ? err.message : t('syncedData.loadFailedActivities'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load(sportFilter);

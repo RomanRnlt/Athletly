@@ -14,15 +14,8 @@ import { WeeklySummary } from '@/components/plan/WeeklySummary';
 import { usePlan } from '@/lib/use-plan';
 import { Colors } from '@athletly/shared';
 import type { WeeklyPlan } from '@athletly/shared';
-
-const GERMAN_MONTHS = [
-  'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',
-  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-] as const;
-
-const GERMAN_DAYS = [
-  'Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag',
-] as const;
+import { useI18n, useT, type TranslateFn } from '@/i18n';
+import { monthName, monthNameShort, weekdayName } from '@/lib/datetime';
 
 function getCalendarWeek(dateISO: string): number {
   const d = new Date(dateISO + 'T12:00:00');
@@ -37,21 +30,30 @@ function getCalendarWeek(dateISO: string): number {
   );
 }
 
-function formatWeekRange(mondayISO: string): string {
+function formatWeekRange(t: TranslateFn, intlLocale: string, mondayISO: string): string {
   const monday = new Date(mondayISO + 'T12:00:00');
   const sunday = new Date(mondayISO + 'T12:00:00');
   sunday.setDate(sunday.getDate() + 6);
-  const startMonth = GERMAN_MONTHS[monday.getMonth()];
-  const endMonth = GERMAN_MONTHS[sunday.getMonth()];
+  const startMonth = monthName(intlLocale, monday.getMonth());
+  const endMonth = monthName(intlLocale, sunday.getMonth());
   if (monday.getMonth() === sunday.getMonth()) {
-    return `${monday.getDate()}. bis ${sunday.getDate()}. ${startMonth}`;
+    return t('plan.weekRangeSameMonth', {
+      start: monday.getDate(),
+      end: sunday.getDate(),
+      month: startMonth,
+    });
   }
-  return `${monday.getDate()}. ${startMonth} bis ${sunday.getDate()}. ${endMonth}`;
+  return t('plan.weekRangeCrossMonth', {
+    start: monday.getDate(),
+    startMonth,
+    end: sunday.getDate(),
+    endMonth,
+  });
 }
 
-function formatDayHeader(dateISO: string): string {
+function formatDayHeader(intlLocale: string, dateISO: string): string {
   const d = new Date(dateISO + 'T12:00:00');
-  return `${GERMAN_DAYS[d.getDay()]}, ${d.getDate()}. ${GERMAN_MONTHS[d.getMonth()]}`;
+  return `${weekdayName(intlLocale, d.getDay())}, ${d.getDate()}. ${monthName(intlLocale, d.getMonth())}`;
 }
 
 function isToday(dateISO: string): boolean {
@@ -67,6 +69,7 @@ function isToday(dateISO: string): boolean {
 // Desktop-only: one column per training day, showing that day's sessions (or a
 // compact rest state). Used in the responsive week grid.
 function DayColumn({ day }: { day: WeeklyPlan['days'][number] }) {
+  const { t, intlLocale } = useI18n();
   const d = new Date(day.date + 'T12:00:00');
   const today = isToday(day.date);
   const sessions = day.sessions ?? [];
@@ -80,7 +83,7 @@ function DayColumn({ day }: { day: WeeklyPlan['days'][number] }) {
     >
       <div className="flex items-baseline justify-between mb-2 px-1">
         <span className="text-text-primary text-sm font-semibold">
-          {GERMAN_DAYS[d.getDay()]}
+          {weekdayName(intlLocale, d.getDay())}
         </span>
         <span
           className={[
@@ -88,14 +91,14 @@ function DayColumn({ day }: { day: WeeklyPlan['days'][number] }) {
             today ? 'text-primary' : 'text-text-muted',
           ].join(' ')}
         >
-          {d.getDate()}. {GERMAN_MONTHS[d.getMonth()].slice(0, 3)}
+          {d.getDate()}. {monthNameShort(intlLocale, d.getMonth())}
         </span>
       </div>
 
       {sessions.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-6 rounded-xl bg-surface-nested">
           <Moon size={22} color={Colors.textMuted} strokeWidth={1.5} />
-          <span className="text-text-muted text-xs mt-2">Ruhetag</span>
+          <span className="text-text-muted text-xs mt-2">{t('plan.restDay')}</span>
         </div>
       ) : (
         <div className="flex flex-col">
@@ -109,6 +112,7 @@ function DayColumn({ day }: { day: WeeklyPlan['days'][number] }) {
 }
 
 function PlanContent({ weeks }: { weeks: WeeklyPlan[] }) {
+  const { t, intlLocale } = useI18n();
   const [weekIndex, setWeekIndex] = useState(0);
   const week = weeks[Math.min(weekIndex, weeks.length - 1)];
 
@@ -118,7 +122,10 @@ function PlanContent({ weeks }: { weeks: WeeklyPlan[] }) {
     setSelectedDate(week.days[0]?.date ?? '');
   }, [week]);
 
-  const weekRange = useMemo(() => formatWeekRange(week.weekStart), [week.weekStart]);
+  const weekRange = useMemo(
+    () => formatWeekRange(t, intlLocale, week.weekStart),
+    [t, intlLocale, week.weekStart],
+  );
   const calendarWeek = useMemo(() => getCalendarWeek(week.weekStart), [week.weekStart]);
   const selectedDay = week.days.find((d) => d.date === selectedDate);
   const sessions = selectedDay?.sessions ?? [];
@@ -135,7 +142,11 @@ function PlanContent({ weeks }: { weeks: WeeklyPlan[] }) {
       <div className="flex flex-col items-center md:items-start md:flex-1 md:px-4">
         <span className="text-text-primary text-sm md:text-lg font-semibold">{weekRange}</span>
         <span className="text-text-muted text-xs mt-0.5">
-          KW {calendarWeek} · Woche {weekIndex + 1}/{weeks.length}
+          {t('plan.calendarWeek', {
+            week: calendarWeek,
+            current: weekIndex + 1,
+            total: weeks.length,
+          })}
         </span>
       </div>
       <Button
@@ -162,7 +173,7 @@ function PlanContent({ weeks }: { weeks: WeeklyPlan[] }) {
           />
 
           <p className="text-text-secondary text-sm font-medium mt-4 mb-3">
-            {selectedDate ? formatDayHeader(selectedDate) : ''}
+            {selectedDate ? formatDayHeader(intlLocale, selectedDate) : ''}
           </p>
 
           {sessions.length === 0 ? (
@@ -196,19 +207,18 @@ function PlanContent({ weeks }: { weeks: WeeklyPlan[] }) {
 }
 
 function EmptyPlan() {
+  const t = useT();
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8">
       <CalendarDays size={40} color={Colors.textMuted} strokeWidth={1.5} />
-      <p className="text-text-primary text-base font-medium mt-4 mb-2">Noch kein Trainingsplan</p>
-      <p className="text-text-secondary text-sm text-center leading-5">
-        Sag Ohm im Chat dass du einen Plan willst. Er recherchiert und baut dir einen
-        wissenschaftlich fundierten 2-Wochen-Plan, den du dann gemeinsam mit ihm anpassen kannst.
-      </p>
+      <p className="text-text-primary text-base font-medium mt-4 mb-2">{t('plan.emptyTitle')}</p>
+      <p className="text-text-secondary text-sm text-center leading-5">{t('plan.emptyBody')}</p>
     </div>
   );
 }
 
 export default function PlanScreen() {
+  const t = useT();
   const { weeks, status, hasPlan, isLoading, error, refresh } = usePlan();
 
   // Refetch when the window/tab regains focus (web analogue of useFocusEffect).
@@ -218,12 +228,12 @@ export default function PlanScreen() {
     return () => window.removeEventListener('focus', onFocus);
   }, [refresh]);
 
-  const subtitle = status === 'draft' ? 'Entwurf - im Chat bestaetigen' : 'Dein aktiver Plan';
+  const subtitle = status === 'draft' ? t('plan.subtitleDraft') : t('plan.subtitleActive');
 
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0">
       <GradientHeader
-        title="Trainingsplan"
+        title={t('plan.title')}
         subtitle={hasPlan ? subtitle : undefined}
         contentMaxWidthClass="md:max-w-6xl"
       />
