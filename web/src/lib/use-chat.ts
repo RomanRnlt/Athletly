@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from './api';
 import type { StatusEvent, ToolCallEvent, ToolResultEvent } from './api';
 import type { ChatMessage, ToolStep, ToolStepStatus } from '@athletly/shared';
+import { DEMO_MODE, replayScriptedTurn, replayWelcome } from './demo';
 
 interface UseChatOptions {
   initialMessages?: readonly ChatMessage[];
@@ -206,7 +207,9 @@ export function useChat({
       setMessages([...messages, userMessage, assistantPlaceholder]);
       beginTurn(assistantId);
 
-      streamHandleRef.current = streamChat([...messages, userMessage], makeHandlers(assistantId));
+      streamHandleRef.current = DEMO_MODE
+        ? replayScriptedTurn(makeHandlers(assistantId))
+        : streamChat([...messages, userMessage], makeHandlers(assistantId));
     },
     [messages, isStreaming, beginTurn, makeHandlers],
   );
@@ -223,6 +226,11 @@ export function useChat({
     };
     setMessages([placeholder]);
     beginTurn(assistantId);
+
+    if (DEMO_MODE) {
+      streamHandleRef.current = replayWelcome(makeHandlers(assistantId));
+      return;
+    }
 
     const trigger: ChatMessage = {
       id: 'trigger',

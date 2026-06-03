@@ -3,6 +3,7 @@
 // Ported 1:1 from mobile/lib/consent-context.tsx.
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiGet, apiPost, ApiError } from './api';
+import { DEMO_MODE } from './demo';
 
 export interface ConsentStatus {
   granted: boolean;
@@ -49,6 +50,12 @@ export function ConsentProvider({
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (DEMO_MODE) {
+      // Demo: treat the user as fully consented so no gate ever triggers.
+      setStatus({ granted: true, needsConsent: false, version: 'demo', currentVersion: 'demo' });
+      setIsLoading(false);
+      return;
+    }
     if (!enabled) {
       setStatus(null);
       setIsLoading(false);
@@ -68,6 +75,12 @@ export function ConsentProvider({
   }, [enabled]);
 
   const setConsent = useCallback(async (granted: boolean) => {
+    if (DEMO_MODE) {
+      if (typeof window !== 'undefined') {
+        window.alert('Demo-Modus: Einwilligungseinstellungen sind in dieser Demo deaktiviert.');
+      }
+      return;
+    }
     const d = await apiPost<RawConsent>('/account/consent', { granted });
     setStatus(fromRaw(d));
   }, []);

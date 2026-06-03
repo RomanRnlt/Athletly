@@ -3,6 +3,7 @@
 // Ported 1:1 from mobile/lib/use-metrics.ts.
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
+import { DEMO_MODE, DEMO_METRICS } from './demo';
 
 export interface DailyMetric {
   date: string;
@@ -47,6 +48,11 @@ export function useMetrics(days = 30): UseMetricsReturn {
   const refresh = useCallback(async () => {
     setError(null);
     setIsLoading(true);
+    if (DEMO_MODE) {
+      setMetrics(DEMO_METRICS.slice(0, days));
+      setIsLoading(false);
+      return;
+    }
     try {
       const data = await apiGet<MetricsListResponse>(`/metrics?days=${days}`);
       setMetrics(data.metrics);

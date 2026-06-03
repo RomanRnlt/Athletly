@@ -3,6 +3,7 @@
 // Ported 1:1 from mobile/lib/use-profile.ts.
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
+import { DEMO_MODE, DEMO_PROFILE } from './demo';
 
 export interface ProfileSection {
   name: string;
@@ -37,6 +38,14 @@ export function useAthleteProfile(): UseProfileReturn {
 
   const refresh = useCallback(async () => {
     setError(null);
+    if (DEMO_MODE) {
+      setSections([...DEMO_PROFILE.sections]);
+      setIsEmpty(DEMO_PROFILE.is_empty);
+      setOnboardingCompleted(DEMO_PROFILE.onboarding_completed);
+      setFilledSections(DEMO_PROFILE.filled_sections);
+      setIsLoading(false);
+      return;
+    }
     try {
       const data = await apiGet<ProfileResponse>('/profile');
       setSections(data.sections);

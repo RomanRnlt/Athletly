@@ -3,6 +3,7 @@
 // Ported 1:1 from mobile/lib/use-garmin.ts.
 import { useCallback, useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, ApiError } from './api';
+import { DEMO_MODE, DEMO_GARMIN_STATUS } from './demo';
 
 export interface GarminStatus {
   connected: boolean;
@@ -49,6 +50,11 @@ export function useGarmin(): UseGarminReturn {
 
   const refresh = useCallback(async () => {
     setError(null);
+    if (DEMO_MODE) {
+      setStatus(DEMO_GARMIN_STATUS);
+      setIsLoading(false);
+      return;
+    }
     try {
       const result = await apiGet<GarminStatus>('/garmin/status');
       setStatus(result);
@@ -68,6 +74,14 @@ export function useGarmin(): UseGarminReturn {
   const sync = useCallback(
     async (days?: number) => {
       setError(null);
+      if (DEMO_MODE) {
+        return {
+          activities_synced: DEMO_GARMIN_STATUS.activity_count,
+          daily_metrics_synced: 7,
+          days: days ?? 7,
+          last_sync_at: DEMO_GARMIN_STATUS.last_sync_at ?? new Date().toISOString(),
+        };
+      }
       setIsSyncing(true);
       try {
         const result = await apiPost<SyncResult>('/garmin/sync', days ? { days } : {});
@@ -86,6 +100,7 @@ export function useGarmin(): UseGarminReturn {
 
   const disconnect = useCallback(async () => {
     setError(null);
+    if (DEMO_MODE) return; // friendly no-op: keep the connected demo state
     try {
       await apiDelete<{ status: string }>('/garmin/disconnect');
       await refresh();
