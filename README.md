@@ -23,7 +23,8 @@ An AI coaching engine built around a **declarative agent architecture**: an agen
 
 - [System Architecture](#system-architecture)
 - [Declarative Skill-Based Agents](#declarative-skill-based-agents)
-- [Plan Generation: Generator + Evaluator](#plan-generation-generator--evaluator)
+- [Plan Generation: the Spawn Mechanism](#plan-generation-the-spawn-mechanism)
+- [Structured Outputs, Validation & Pydantic](#structured-outputs-validation--pydantic)
 - [Eval Harness: Golden Fixtures + LLM Judge](#eval-harness-golden-fixtures--llm-judge)
 - [Code Computes, the LLM Interprets](#code-computes-the-llm-interprets)
 - [Cost Control: Prompt Caching + Credit Metering](#cost-control-prompt-caching--credit-metering)
@@ -96,39 +97,67 @@ graph TB
 
 ## Declarative Skill-Based Agents
 
-The central idea: **Agent = Skill + Model**. A skill is a `SKILL.md` folder whose frontmatter declares everything operational (its model, allowed tools, which child agents it may spawn, its terminal "submit" tool and output schema). Adding a capability means writing a skill, not wiring code.
+The central idea: **Agent = Skill + Model**. A skill is a directory (`skills/<name>/`) following the [Agent Skills](https://agentskills.io) convention: a `SKILL.md` with YAML frontmatter plus optional `scripts/` and `references/`. The frontmatter declares everything operational; the markdown body is the agent's system prompt. The agent registry is **built by scanning `skills/` and parsing frontmatter**, so a new agent is a new folder, zero Python.
 
 ```mermaid
 flowchart LR
-    SKILL["SKILL.md\n(name + tools + model + spawns)"] --> SPEC["AgentSpec"]
-    SPEC --> ENGINE["run_subagent engine"]
+    SKILL["SKILL.md folder<br/>frontmatter + body + scripts/"] --> SPEC["AgentSpec<br/>(agents.py)"]
+    SPEC --> ENGINE["run_subagent engine<br/>(subagent.py)"]
     ENGINE -->|"+ model"| AGENT(["Running Agent"])
-    AGENT -->|"may spawn"| CHILD(["Child Agent"])
+    AGENT -->|"spawns child as a tool"| CHILD(["Child Agent"])
 
     style SKILL fill:#7C3AED,stroke:#4F46E5,color:#fff
+    style SPEC fill:#2563EB,stroke:#1D4ED8,color:#fff
     style ENGINE fill:#2563EB,stroke:#1D4ED8,color:#fff
     style AGENT fill:#4F46E5,stroke:#7C3AED,color:#fff
     style CHILD fill:#4F46E5,stroke:#7C3AED,color:#fff
 ```
 
-**How it works:**
-1. Each skill is a folder with a `SKILL.md` (frontmatter: `name`, `allowed-tools`, and a `metadata.athletly` block with model, spawnable children, terminal tool + strict schema).
-2. `agents.py` turns a skill into an `AgentSpec`; `subagent.py` is the generic engine that runs any spec as a tool-calling loop.
-3. A spawnable skill is exposed to its parent as a tool, so the coach can spawn a specialist mid-conversation; spawns can nest.
-4. All operational config lives in the skill, all plumbing in two modules. New behavior = a new `SKILL.md`.
+### Anatomy of a skill
 
-| Concern | Lives in |
+```yaml
+# skills/plan/SKILL.md
+---
+name: plan
+description: Build a fresh 2-week training plan from scratch.
+allowed-tools: read_athlete_profile get_athlete_state search_activities web_search
+metadata:
+  athletly:
+    activation: spawn                    # spawn (registry agent) | inline (prompt-injected)
+    chat_triggerable: true               # the coach may launch it via run_specialist
+    model: plan_model                    # alias resolved to a configured model
+    spawns: [evaluate-plan]              # child agents it may spawn
+    terminal_tool: submit_plan           # calling this ends the run; its args are the result
+    terminal_schema: PLAN_SCHEMA         # JSON Schema the terminal args must match
+    validator: scripts/validate_plan.py  # deterministic post-check on the result
+    max_turns: 16
+---
+# (the markdown body below is the agent's system prompt / instructions)
+```
+
+| Frontmatter field | What it controls |
 |---|---|
-| What an agent can do, which model, which children | The skill's `SKILL.md` frontmatter |
-| How any agent actually runs (tool loop, retries, output) | `subagent.py` (generic engine) |
-| Wiring skills to the engine, nesting, spawn-as-tool | `agents.py` |
-| Domain knowledge (training, coaching) | The skill body + the model |
+| `model` | which model the agent runs on (alias resolved to a configured model) |
+| `allowed-tools` | the exact tools this agent may call (its capability boundary) |
+| `spawns` | which child agents it may launch (each exposed to it as a tool) |
+| `terminal_tool` + `terminal_schema` | the "submit" tool that ends the run; its args (matched to the JSON Schema) are the structured result |
+| `validator` | a skill-bundled script that coerces + validates the terminal result |
+| `activation` | `spawn` (discovered + spawnable) or `inline` (injected into the chat prompt on a trigger) |
+| `max_turns` / `round_cap` | runaway guards that markdown cannot enforce |
+
+### From a folder to a running agent
+
+1. **Discovery** (`skills.py`): `scan_skills()` walks `skills/`, parses each `SKILL.md` frontmatter, and yields `ParsedSkill`s. The body (with `${SKILL_DIR}` substituted) becomes the system prompt.
+2. **Registry** (`agents.py`): each `spawn`-activation skill becomes a frozen `AgentSpec`; `AGENT_SPECS` is built once at import. Inline skills (e.g. onboarding) are not registry agents, code injects them into the chat prompt on a deterministic trigger.
+3. **Run** (`subagent.py`): `run_subagent()` is the generic engine. It seeds a conversation with the skill body as system prompt + the task, then loops: call the model with the skill's tools + its terminal tool, execute any tool calls, append results, repeat. The run ends when the model calls the terminal tool (its args = the structured result) or hits `max_turns`.
+
+All operational config lives in the skill; all plumbing in `skills.py` + `agents.py` + `subagent.py`. A new agent is a new `SKILL.md`, no Python.
 
 ---
 
-## Plan Generation: Generator + Evaluator
+## Plan Generation: the Spawn Mechanism
 
-A training plan is not produced in one shot. A **generator** agent drafts a plan in a universal session grammar, **spawns an evaluator** agent that scores it against the rubric, then revises against the feedback until it passes (bounded round cap) and submits.
+A training plan is not produced in one shot. The **generator** (`skills/plan`) drafts a plan in a universal session grammar, **spawns an evaluator** (`skills/evaluate-plan`) that scores it against the rubric, then revises until it passes and submits. Both are just skills on the same engine; the nesting is the interesting part.
 
 ```mermaid
 flowchart LR
@@ -145,7 +174,46 @@ flowchart LR
     style F fill:#22C55E,stroke:#16A34A,color:#fff
 ```
 
-The generator and evaluator are themselves just two skills (`skills/plan`, `skills/evaluate-plan`) on the same generic engine. The evaluator returns structured, severity-tagged findings; approval is **deterministic** (a function of severities), not a vibe. Plans are written in a single **session grammar** so the same structure renders identically on web and mobile.
+### How spawning works
+
+A child skill is exposed to its parent **as a tool**. When the parent's model calls that tool, the handler runs the child agent and returns its result, so spawning is just a tool call that happens to run another agent:
+
+1. In `spawn(name, ...)` (`agents.py`), the parent's tool set = its own `allowed-tools` + its `terminal_tool` + **one tool per child** listed in `spawns` (`_spawn_tool_schema`).
+2. Calling a child tool invokes `_make_spawn_handler`, which calls `spawn(child, ...)` **recursively**. The generator/evaluator loop is therefore not hardcoded orchestration: it falls out of the `plan` skill listing `evaluate-plan` in its `spawns`.
+3. **Depth + safety**: spawns nest up to `MAX_SPAWN_DEPTH` (3). Every event a sub-agent emits is tagged with its `depth` + `agent` name, so the client renders nested work indented (Claude-Code style).
+4. **Round cap + early terminal**: the evaluation loop is capped. Once the cap is hit, the handler raises `EarlyTerminal(plan)` so the parent ends with its best draft directly, instead of paying for another full generation.
+5. **Deterministic approval**: the evaluator returns severity-tagged `issues`; `_derive_binding_approval` computes `approved = (no blocking issues)` from the severities, **overriding the model's own boolean**. This kills the "perfectionist evaluator" trap where nothing ever passes.
+
+Plans are written in a single **session grammar** so the same structure renders identically on web and mobile.
+
+---
+
+## Structured Outputs, Validation & Pydantic
+
+The system is typed at three boundaries: **Pydantic** at the HTTP edges, **JSON Schema + a validator script** for agent outputs, and **LiteLLM** as the model gateway in between.
+
+```mermaid
+flowchart LR
+    A["HTTP request"] -->|"Pydantic v2"| B["FastAPI handler"]
+    B --> C["Agent (LiteLLM tool loop)"]
+    C -->|"terminal-tool args<br/>matched to JSON Schema"| D["Structured result"]
+    D -->|"validator script<br/>coerce + validate"| E["Clean result"]
+    E -->|"Pydantic v2"| F["HTTP response"]
+
+    style A fill:#7C3AED,stroke:#4F46E5,color:#fff
+    style B fill:#2563EB,stroke:#1D4ED8,color:#fff
+    style C fill:#4F46E5,stroke:#7C3AED,color:#fff
+    style D fill:#2563EB,stroke:#1D4ED8,color:#fff
+    style E fill:#22C55E,stroke:#16A34A,color:#fff
+    style F fill:#7C3AED,stroke:#4F46E5,color:#fff
+```
+
+- **API boundary, Pydantic v2.** Every request and response is a Pydantic model (`schemas.py`), validated by FastAPI. Untrusted input never reaches the agent unvalidated.
+- **Agent output, JSON Schema terminal tools.** An agent finishes by calling its `terminal_tool`; that tool's parameters are a JSON Schema (e.g. `PLAN_SCHEMA` in `SCHEMA_REGISTRY`). The model must return arguments matching that shape, so the structured result is shaped by construction.
+- **Deterministic second pass, validator script.** After the terminal call, the skill's bundled `validator` (e.g. `scripts/validate_plan.py`) runs `coerce()` then `validate()`: it fixes serialization slips and surfaces grammar issues, never raising. Domain rules live in the skill's own script; the engine just triggers it.
+- **Provider-agnostic, LiteLLM.** All model calls go through LiteLLM, so the model is a config value (Claude by default, Gemini or others by changing one env var).
+
+> Note: `pydantic-ai` is listed as a dependency from the original scaffold but is not used; the agent loop is built directly on LiteLLM.
 
 ---
 
@@ -301,8 +369,12 @@ athletly/                        # npm-workspaces monorepo
 ### Prerequisites
 - Node.js 20+ and npm (for web + mobile workspaces)
 - Python 3.12+ (for the backend)
-- A Supabase project (Postgres + Auth)
+- Supabase: either a hosted project, or run the **whole stack locally** with the Supabase CLI (Docker), no cloud account needed
 - An Anthropic API key (or another LiteLLM-supported provider)
+
+> **Want to just look at it?** The web app's **demo mode needs none of the above** (no Supabase, no API key). Skip to step 3.
+
+> **Fully local Supabase:** Supabase is just hosted Postgres + Auth. `supabase start` (from `services/api`) spins up the entire stack in Docker, prints a local `SUPABASE_URL` + keys for your `.env`, and applies the migrations. So contributors can run the real backend **100% locally** without any Supabase cloud account.
 
 ### 1. Clone + install
 ```bash
@@ -327,8 +399,12 @@ SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 # optional: ATHLETLY_CHAT_MODEL, ATHLETLY_CREDITS_FREE, REVENUECAT_WEBHOOK_TOKEN, ...
 ```
-Apply the database schema with the Supabase CLI:
+Database, pick one:
 ```bash
+# A) fully local: spins up Postgres + Auth in Docker and applies the migrations
+supabase start                   # from services/api; prints local URL + keys for .env
+
+# B) a hosted Supabase project: push the migrations to it
 supabase db push                 # from services/api (migrations in supabase/migrations)
 ```
 

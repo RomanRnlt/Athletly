@@ -3,8 +3,9 @@
 Thumbs.db
 
 # Claude Code working dir (settings, sessions, worktrees) - not for the public repo.
-# Architecture docs worth shipping live under top-level docs/ instead.
 .claude/
+# Internal architecture notes - the README is the public technical doc.
+docs/
 
 # Editors
 .idea/

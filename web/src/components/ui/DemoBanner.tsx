@@ -9,8 +9,8 @@ import { DEMO_MODE } from '@/lib/demo';
 export function DemoBanner() {
   if (!DEMO_MODE) return null;
   return (
-    <div className="w-full bg-primary px-3 py-1.5 flex items-center justify-center">
-      <span className="text-white text-[11px] font-medium text-center leading-tight">
+    <div className="w-full bg-[#FACC15] px-3 py-1.5 flex items-center justify-center">
+      <span className="text-[#1E293B] text-[11px] font-semibold text-center leading-tight">
         Demo-Modus · kein Live-LLM angebunden · die Antworten sind vorab geskriptet
       </span>
     </div>
