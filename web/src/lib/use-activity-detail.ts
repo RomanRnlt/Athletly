@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import type { Activity } from './use-activities';
+import { DEMO_MODE, DEMO_ACTIVITIES, DEMO_ACTIVITY_EXTRAS } from './demo';
 
 interface ActivityDetailResponse {
   activity: Activity;
@@ -26,6 +27,14 @@ export function useActivityDetail(id: string): UseActivityDetailReturn {
   const load = useCallback(async () => {
     setError(null);
     setIsLoading(true);
+    if (DEMO_MODE) {
+      const found = DEMO_ACTIVITIES.find((a) => a.garmin_activity_id === id) ?? null;
+      setActivity(found);
+      setExtras(found ? (DEMO_ACTIVITY_EXTRAS[found.garmin_activity_id] ?? {}) : {});
+      if (!found) setError('Activity konnte nicht geladen werden');
+      setIsLoading(false);
+      return;
+    }
     try {
       const data = await apiGet<ActivityDetailResponse>(
         `/activities/${encodeURIComponent(id)}`,

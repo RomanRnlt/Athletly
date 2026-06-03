@@ -40,6 +40,7 @@ import { useUsage } from '@/lib/use-usage';
 import { deleteAccount, exportAccountData } from '@/lib/use-account';
 import { Colors } from '@athletly/shared';
 import { confirmAction, notify } from '@/lib/dialog';
+import { DEMO_MODE } from '@/lib/demo';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -98,6 +99,10 @@ export default function SettingsScreen() {
   };
 
   const performReset = async () => {
+    if (DEMO_MODE) {
+      notify('Demo-Modus: Das Zuruecksetzen der Daten ist in dieser Demo deaktiviert.');
+      return;
+    }
     try {
       await apiPost<{ status: string }>('/account/reset', {});
       await refresh();

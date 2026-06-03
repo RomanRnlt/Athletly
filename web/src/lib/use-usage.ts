@@ -3,6 +3,7 @@
 // Ported 1:1 from mobile/lib/use-usage.ts.
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
+import { DEMO_MODE, DEMO_USAGE } from './demo';
 
 export interface UsageSummary {
   tier: 'free' | 'pro' | 'grandfather';
@@ -51,6 +52,11 @@ export function useUsage(): UseUsageReturn {
 
   const refresh = useCallback(async () => {
     setError(null);
+    if (DEMO_MODE) {
+      setUsage(DEMO_USAGE);
+      setIsLoading(false);
+      return;
+    }
     try {
       const d = await apiGet<RawUsage>('/account/usage');
       setUsage(fromRaw(d));

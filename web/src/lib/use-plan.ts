@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
 import { parseSession } from './plan-grammar';
 import type { WeeklyPlan, DayPlan } from '@athletly/shared';
+import { DEMO_MODE, DEMO_PLAN } from './demo';
 
 interface RawDay {
   date: string;
@@ -61,6 +62,14 @@ export function usePlan(): UsePlanReturn {
 
   const refresh = useCallback(async () => {
     setError(null);
+    if (DEMO_MODE) {
+      setHasPlan(DEMO_PLAN.hasPlan);
+      setStatus(DEMO_PLAN.status);
+      setRationale(DEMO_PLAN.rationale);
+      setWeeks([...DEMO_PLAN.weeks]);
+      setIsLoading(false);
+      return;
+    }
     try {
       const data = await apiGet<PlanResponse>('/plan');
       setHasPlan(data.has_plan);

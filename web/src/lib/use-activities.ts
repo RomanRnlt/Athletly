@@ -3,6 +3,7 @@
 // Ported 1:1 from mobile/lib/use-activities.ts.
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, ApiError } from './api';
+import { DEMO_MODE, DEMO_ACTIVITIES, DEMO_SPORTS } from './demo';
 
 export interface Activity {
   garmin_activity_id: string;
@@ -44,6 +45,15 @@ export function useActivities(): UseActivitiesReturn {
   const load = useCallback(async (sport: string | null) => {
     setError(null);
     setIsLoading(true);
+    if (DEMO_MODE) {
+      const filtered = sport
+        ? DEMO_ACTIVITIES.filter((a) => a.sport === sport)
+        : DEMO_ACTIVITIES;
+      setActivities(filtered);
+      if (!sport) setSports(DEMO_SPORTS);
+      setIsLoading(false);
+      return;
+    }
     try {
       const qs = sport ? `?sport=${encodeURIComponent(sport)}&limit=200` : '?limit=200';
       const data = await apiGet<ActivityListResponse>(`/activities${qs}`);
