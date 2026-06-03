@@ -3,35 +3,31 @@ import React from 'react';
 import { DemoBanner } from './DemoBanner';
 
 /**
- * Centered phone-width column. The source is a mobile app, so the web port
- * presents the same single-column layout.
+ * Responsive application shell.
  *
- * Mobile (< md): the column fills the viewport, full-bleed, no frame.
+ * Mobile (< md): a single full-bleed column that fills the viewport. The bottom
+ * TabBar (rendered by the tabbed layout) is the primary navigation. This matches
+ * the source mobile app 1:1.
  *
- * Desktop (md+): the column is presented as a tasteful phone device frame,
- * vertically centered on a subtly brand-tinted backdrop, with a bounded phone
- * height, rounded bezel, border and a large soft shadow.
+ * Desktop (md+): a real web app shell that uses the full viewport. AppFrame no
+ * longer draws a phone device frame; it simply hosts the DemoBanner at the very
+ * top and lets the routed content (which on the tabbed routes is a left sidebar
+ * plus a scrolling main area) fill the remaining height.
  *
- * AppFrame is the height authority: the column is a flex-col whose content
- * region is `flex-1 min-h-0`, so children fill the frame (not the viewport)
- * and any scrolling happens inside the phone. Internal screens use
- * `h-full`/`min-h-0` instead of `h-screen`/`min-h-screen` to cooperate.
+ * AppFrame remains the height authority: it is a flex-col pinned to the viewport
+ * height whose content region is `flex-1 min-h-0`, so children manage their own
+ * internal scrolling. Internal screens use `h-full`/`min-h-0` to cooperate.
  */
 export function AppFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen w-full flex justify-center md:items-center md:p-6 lg:p-10 md:bg-gradient-to-b md:from-slate-100 md:to-slate-200">
-      <div
-        className={[
-          // Mobile: full-bleed, fills the viewport, no frame.
-          'w-full max-w-[440px] min-h-screen bg-background flex flex-col relative overflow-hidden shadow-xl',
-          // Desktop: bounded phone height, rounded bezel, border, soft shadow.
-          'md:min-h-0 md:h-[860px] md:max-h-[92vh] md:rounded-[2.25rem]',
-          'md:border md:border-black/10 md:shadow-[0_40px_80px_-20px_rgba(15,23,42,0.45)]',
-        ].join(' ')}
-      >
-        <DemoBanner />
-        {/* Content region: children fill this, not the viewport. */}
-        <div className="flex-1 min-h-0 flex flex-col">{children}</div>
+    <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
+      <DemoBanner />
+      {/* Content region: children fill this, not the viewport. */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Mobile keeps the bounded phone-width column; desktop goes full width. */}
+        <div className="flex-1 min-h-0 w-full max-w-[440px] md:max-w-none mx-auto flex flex-col bg-background md:bg-transparent relative overflow-hidden md:overflow-visible">
+          {children}
+        </div>
       </div>
     </div>
   );

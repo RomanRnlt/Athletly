@@ -45,9 +45,20 @@ import { DEMO_MODE } from '@/lib/demo';
 
 function SectionTitle({ children }: { children: string }) {
   return (
-    <p className="text-text-muted text-xs font-semibold uppercase tracking-wide px-4 mb-2 mt-4">
+    <p className="text-text-muted text-xs font-semibold uppercase tracking-wide px-4 md:px-0 mb-2 mt-4">
       {children}
     </p>
+  );
+}
+
+// Groups a section title with its card(s) so the desktop two-column grid keeps
+// each title attached to its content as a single grid item.
+function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <section className="md:break-inside-avoid mb-1 md:mb-5">
+      {title && <SectionTitle>{title}</SectionTitle>}
+      <div className="mx-4 md:mx-0">{children}</div>
+    </section>
   );
 }
 
@@ -178,9 +189,10 @@ export default function SettingsScreen() {
 
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0">
-      <GradientHeader title="Einstellungen" />
+      <GradientHeader title="Einstellungen" contentMaxWidthClass="md:max-w-4xl" />
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-8">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-8 md:pb-12">
+       <div className="mx-auto w-full md:max-w-4xl md:px-10 md:pt-6">
         <ProfileHeader email={accountEmail} createdAt={accountCreatedAt ?? undefined} />
 
         {error && (
@@ -189,7 +201,7 @@ export default function SettingsScreen() {
           </div>
         )}
 
-        <div className="mx-4 mt-2">
+        <Section>
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow
               icon={Sparkles}
@@ -198,10 +210,11 @@ export default function SettingsScreen() {
               isLast
             />
           </Card>
-        </div>
+        </Section>
 
-        <SectionTitle>Verbundene Dienste</SectionTitle>
-        <div className="mx-4">
+        {/* Two balanced columns on desktop; single stack on mobile. */}
+        <div className="md:columns-2 md:gap-8">
+        <Section title="Verbundene Dienste">
           <Card variant="standard" className="p-0 overflow-hidden">
             <ServiceStatus
               name="Garmin Connect"
@@ -250,19 +263,17 @@ export default function SettingsScreen() {
               </div>
             </div>
           )}
-        </div>
+        </Section>
 
-        <SectionTitle>Einstellungen</SectionTitle>
-        <div className="mx-4">
+        <Section title="Einstellungen">
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow icon={Bell} label="Benachrichtigungen" value="An" onPress={() => {}} />
             <SettingsRow icon={Globe} label="Sprache" value="Deutsch" onPress={() => {}} />
             <SettingsRow icon={Moon} label="Erscheinungsbild" value="Hell" onPress={() => {}} isLast />
           </Card>
-        </div>
+        </Section>
 
-        <SectionTitle>KI-Nutzung</SectionTitle>
-        <div className="mx-4">
+        <Section title="KI-Nutzung">
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow
               icon={Zap}
@@ -290,12 +301,11 @@ export default function SettingsScreen() {
             )}
           </Card>
           {usage?.tier === 'grandfather' && (
-            <p className="text-text-muted text-xs px-4 mt-1.5">Unbegrenzter Zugang (Grandfather).</p>
+            <p className="text-text-muted text-xs px-4 md:px-0 mt-1.5">Unbegrenzter Zugang (Grandfather).</p>
           )}
-        </div>
+        </Section>
 
-        <SectionTitle>Datenschutz & DSGVO</SectionTitle>
-        <div className="mx-4">
+        <Section title="Datenschutz & DSGVO">
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow
               icon={ShieldCheck}
@@ -310,10 +320,9 @@ export default function SettingsScreen() {
             />
             <SettingsRow icon={Lock} label="Datenschutzerklaerung" onPress={() => {}} isLast />
           </Card>
-        </div>
+        </Section>
 
-        <SectionTitle>Account</SectionTitle>
-        <div className="mx-4">
+        <Section title="Account">
           <Card variant="standard" className="p-0 overflow-hidden">
             <SettingsRow icon={HelpCircle} label="Hilfe & Support" onPress={() => {}} />
             <SettingsRow icon={RotateCcw} label="Alle Daten zuruecksetzen" onPress={handleReset} isDestructive />
@@ -326,7 +335,9 @@ export default function SettingsScreen() {
               isLast
             />
           </Card>
+        </Section>
         </div>
+       </div>
       </div>
 
       <GarminConnectModal
