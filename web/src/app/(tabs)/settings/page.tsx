@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/(tabs)/settings.tsx. Same sections (profile entry,
 // connected services, settings, AI usage, GDPR, account). Alert.alert flows ->

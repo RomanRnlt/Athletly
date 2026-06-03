@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Mirrors mobile/app/index.tsx: redirect to the plan tab. The RoutingGate in
 // providers.tsx handles auth/consent gating before this is reached.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * LiveActivity - shows what the agent is doing RIGHT NOW (Claude-Code style),
  * not a checked-off history. Derived from the accumulated steps: the active

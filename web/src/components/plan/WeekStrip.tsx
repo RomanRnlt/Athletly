@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/plan/WeekStrip.tsx. react-native-svg -> SVG;
 // the progress ring math is identical.

@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/health/[date].tsx. The metric is read from
 // sessionStorage (stashed by synced-data before navigation), mirroring the

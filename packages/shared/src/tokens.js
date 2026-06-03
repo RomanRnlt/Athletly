@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * Platform-neutral design tokens (single source of truth).
  *

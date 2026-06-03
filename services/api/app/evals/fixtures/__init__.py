@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Golden fixtures for the plan eval harness.
 
 The single source is ``fixtures.data.FIXTURES``: a deterministic, self-contained

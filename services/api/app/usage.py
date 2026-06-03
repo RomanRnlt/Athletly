@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """AI usage metering: per-request token meter, credit gate, and accounting.
 
 Credits are the user-facing unit. A chat message costs `credit_cost_chat`, a

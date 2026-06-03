@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useState } from 'react';
 import { View, Text, Modal, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { X, Mail, Lock, KeyRound } from 'lucide-react-native';

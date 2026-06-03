@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web variant of mobile/lib/supabase.ts. Uses the browser's default storage
 // (localStorage) instead of AsyncStorage, and reads NEXT_PUBLIC_* env vars

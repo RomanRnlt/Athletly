@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Supabase client wrappers.
 
 The backend uses the service-role key (bypasses RLS) and manually scopes

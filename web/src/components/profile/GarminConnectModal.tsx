@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/profile/GarminConnectModal.tsx. RN Modal -> a
 // fixed overlay. Same two-step (credentials -> MFA) flow + same API calls.

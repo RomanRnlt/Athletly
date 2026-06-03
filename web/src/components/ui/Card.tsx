@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/ui/Card.tsx. Same variants + shadow elevations,
 // translated to CSS box-shadow. Pressable -> div with onClick when onPress set.

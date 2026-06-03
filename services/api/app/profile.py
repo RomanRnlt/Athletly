@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """AthleteProfile stored as a sections jsonb in athlete_profiles.
 
 The closed section skeleton lives in this module (SECTIONS), the content is

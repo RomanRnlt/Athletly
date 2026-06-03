@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Subscription tier management + RevenueCat webhook handling.
 
 RevenueCat is the source of truth for PAID status: its webhook flips an account

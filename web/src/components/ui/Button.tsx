@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/ui/Button.tsx. Same variants, sizes, colors,
 // and the same Tailwind class names; Pressable -> <button>, RN style objects

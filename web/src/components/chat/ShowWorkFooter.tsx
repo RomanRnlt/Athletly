@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/chat/ShowWorkFooter.tsx.
 import React, { useCallback, useState } from 'react';

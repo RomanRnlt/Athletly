@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Eval-harness runner: drive each fixture through ``agents.spawn('plan', ...)``,
 validate the result structurally + against the fixture's invariants + via LLM
 judge, write a JSON report under ``app/evals/reports/<UTC-iso>.json``, print a

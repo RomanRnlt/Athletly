@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Garmin Connect integration.
 
 Tokens stored in the garmin_tokens table (one row per account_id), sync

@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web social sign-in. On the web there is no native Google/Apple SDK, so we use
 // Supabase's OAuth redirect flow (signInWithOAuth). This replaces the mobile

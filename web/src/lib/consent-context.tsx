@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Ported 1:1 from mobile/lib/consent-context.tsx.
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';

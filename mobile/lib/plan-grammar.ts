@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * Boundary parsing for the universal session grammar (ADR 0001).
  *

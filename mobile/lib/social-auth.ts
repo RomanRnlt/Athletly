@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * Social sign-in (Google + Apple).
  *

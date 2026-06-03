@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import Constants from 'expo-constants';
 import EventSource from 'react-native-sse';
 import { getAccessToken } from './supabase';

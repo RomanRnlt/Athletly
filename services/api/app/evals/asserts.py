@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deterministic invariant checks for a generated plan.
 
 Each invariant is a small dict with a closed ``kind`` and a few well-defined

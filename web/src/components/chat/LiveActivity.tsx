@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/chat/LiveActivity.tsx. StyleSheet -> Tailwind +
 // inline styles; same derive-current logic and elapsed timer.

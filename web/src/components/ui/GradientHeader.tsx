@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/ui/GradientHeader.tsx. LinearGradient -> CSS
 // background gradient (BRAND_GRADIENT), safe-area inset -> a small top padding.

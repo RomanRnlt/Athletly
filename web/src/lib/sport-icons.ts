@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Ported from mobile/lib/sport-icons.ts. Icons come from lucide-react (web)
 // rather than lucide-react-native; the icon set + names are identical.
 import {

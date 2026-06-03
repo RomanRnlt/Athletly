@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Supabase-backed data layer for activities, daily metrics, sync state.
 
 Replaces the previous SQLite layer. Every helper is scoped by account_id;

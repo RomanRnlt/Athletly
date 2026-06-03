@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/consent.tsx. Same content + gradient/card layout.
 // Alert.alert -> confirmAction/notify. On agree, the RoutingGate redirects to

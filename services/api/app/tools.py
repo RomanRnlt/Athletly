@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Agent tools backed by Supabase (account-scoped).
 
 Each tool takes account_id as the first kwarg (injected by the agent loop

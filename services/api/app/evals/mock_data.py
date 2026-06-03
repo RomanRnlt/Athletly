@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Mock the Supabase + web-search layer so the plan agent runs offline.
 
 Strategy: patch the narrow data-access functions actually called from

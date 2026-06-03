@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Ported 1:1 from mobile/components/auth/GoogleLogo.tsx (react-native-svg -> SVG).
 import React from 'react';

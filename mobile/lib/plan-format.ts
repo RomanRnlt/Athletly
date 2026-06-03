@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * Display humanization for the session grammar. Pure, presentation-only:
  * turns canonical grammar (seconds/meters, closed tokens) into German UI text.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, ApiError } from './api';
 

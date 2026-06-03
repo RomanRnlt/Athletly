@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Ported from mobile/lib/use-auth.ts. Identical logic; only the import target
 // differs (web supabase client).

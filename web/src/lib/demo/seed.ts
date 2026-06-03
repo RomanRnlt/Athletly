@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Seed data for DEMO_MODE.
 //
 // Shapes match the *return types* of each use-* hook so the demo data flows

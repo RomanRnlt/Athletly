@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import { Pressable, Text, ActivityIndicator, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';

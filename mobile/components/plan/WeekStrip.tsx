@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';

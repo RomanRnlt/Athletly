@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """GDPR consent records for processing health data (Art. 9) via the LLM.
 
 Append-only audit trail in `user_consents`: every grant or withdrawal is a new

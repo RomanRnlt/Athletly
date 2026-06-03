@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/(tabs)/plan.tsx. useFocusEffect refetch becomes a
 // window-focus listener so a plan created in the chat shows up on return.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Ported 1:1 from mobile/lib/plan-grammar.ts. Pure boundary parsing.
 import type {
   Group,

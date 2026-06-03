@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/synced-data.tsx. Segmented control (Aktivitaeten /
 // Gesundheit) + filter chips, lists ActivityCard / HealthDayCard. The health

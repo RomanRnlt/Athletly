@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

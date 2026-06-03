@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Demo mode flag + seed/scripted-data exports.
 //
 // DEMO_MODE turns the web app into a fully self-contained public showcase:

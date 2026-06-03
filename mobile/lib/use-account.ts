@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import { Share } from 'react-native';
 import { apiDelete, apiGet } from './api';
 import { signOut } from './use-auth';

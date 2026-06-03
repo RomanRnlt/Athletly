@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/login.tsx. Same gradient + card layout, same email
 // sign-in/up flow. Social sign-in uses Supabase OAuth redirect (web has no

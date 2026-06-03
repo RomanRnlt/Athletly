@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/plan/SessionCard.tsx. Sport-agnostic grammar
 // rendering, identical structure.

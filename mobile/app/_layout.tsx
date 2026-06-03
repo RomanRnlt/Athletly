@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import '../global.css';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';

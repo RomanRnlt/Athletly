@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Allow ``python -m app.evals`` as a shortcut for ``python -m app.evals.run``."""
 
 from __future__ import annotations

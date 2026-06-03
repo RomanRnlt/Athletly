@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * Universal session grammar (ADR 0001) on the client.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 export const SportColors: Record<string, string> = {
   running: '#3B82F6',
   cycling: '#A855F7',

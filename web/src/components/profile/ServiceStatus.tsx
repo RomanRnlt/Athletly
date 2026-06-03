@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/profile/ServiceStatus.tsx.
 import React from 'react';

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """JWT auth dependency for FastAPI.
 
 Verifies Supabase access tokens via the project's JWKS endpoint (ES256

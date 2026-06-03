@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """LLM-as-judge for qualitative plan scoring.
 
 Six axes, each 0-10, summed and normalised to a 0-100 ``overall`` score.

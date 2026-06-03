@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Plan-vs-actual matching.
 
 Pure, immutable, no I/O. Given the plan weeks (universal grammar) and the

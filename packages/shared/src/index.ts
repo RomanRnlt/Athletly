@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * @athletly/shared - platform-neutral code shared between web and mobile.
  *

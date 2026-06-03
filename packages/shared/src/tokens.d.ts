@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * Type declarations for the plain-JS tokens module (tokens.js).
  * Keeps `Colors`/`BRAND_GRADIENT` strongly typed for TS consumers while the

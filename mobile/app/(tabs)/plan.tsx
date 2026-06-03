@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View, Text, ScrollView } from 'react-native';
 import { useFocusEffect } from 'expo-router';

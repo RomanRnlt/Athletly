@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';

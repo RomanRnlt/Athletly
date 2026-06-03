@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import { Pressable, View, Text } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';

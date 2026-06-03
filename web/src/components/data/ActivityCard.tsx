@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/data/ActivityCard.tsx. Exported format helpers
 // are reused by the activity detail page (same as mobile).

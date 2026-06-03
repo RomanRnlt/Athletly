@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 export type ChatRole = 'user' | 'assistant' | 'system';
 
 /**

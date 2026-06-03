@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Generic autonomous sub-agent runner.
 
 A sub-agent is a skill-driven litellm loop with its own model, system prompt

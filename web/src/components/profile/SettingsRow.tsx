@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/profile/SettingsRow.tsx.
 import React, { type ReactNode } from 'react';

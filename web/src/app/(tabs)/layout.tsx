@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Layout for the tabbed shell (Plan / Chat / Settings), mirroring
 // mobile/app/(tabs)/_layout.tsx. Content scrolls above a fixed bottom tab bar.
 import { TabBar } from '@/components/ui/TabBar';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Scripted chat for DEMO_MODE.
 //
 // A small interpreter that replays a hand-authored coaching conversation with

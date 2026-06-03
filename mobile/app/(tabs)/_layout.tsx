@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import { Tabs } from 'expo-router';
 import { Calendar, MessageCircle, Settings } from 'lucide-react-native';
 import { Colors } from '@athletly/shared';

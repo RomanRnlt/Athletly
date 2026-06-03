@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Ported 1:1 from mobile/lib/sport-colors.ts.
 export const SportColors: Record<string, string> = {
   running: '#3B82F6',

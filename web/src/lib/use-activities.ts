@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Ported 1:1 from mobile/lib/use-activities.ts.
 import { useCallback, useEffect, useState } from 'react';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';

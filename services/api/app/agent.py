@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Chat agent: litellm streaming + tool calling over the Garmin SQLite store.
 
 stream_chat() is a multi-turn loop. Each iteration starts a new streamed

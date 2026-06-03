@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/data/HealthDayCard.tsx. Exported helpers
 // (fmtHealthDate, fmtSleepDuration, scoreColor, metricChips) reused by the

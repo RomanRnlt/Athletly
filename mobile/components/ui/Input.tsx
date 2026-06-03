@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useState } from 'react';
 import { View, TextInput, Text, Pressable } from 'react-native';
 import type { TextInputProps } from 'react-native';

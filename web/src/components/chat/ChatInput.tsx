@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/chat/ChatInput.tsx. Multiline TextInput ->
 // auto-growing <textarea>; Enter sends, Shift+Enter inserts a newline.

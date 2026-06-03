@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/lib/use-account.ts. The export uses a browser file
 // download (Blob + anchor) instead of the native Share sheet; the delete flow

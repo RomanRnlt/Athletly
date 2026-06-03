@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/app/(tabs)/chat.tsx. The inverted FlatList becomes a
 // normal scroll column that auto-scrolls to the latest message. Same SSE

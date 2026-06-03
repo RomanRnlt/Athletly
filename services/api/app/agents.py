@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Declarative agent registry, built from SKILL.md frontmatter.
 
 An agent is NOT custom Python. An agent = a skill folder (Agent Skills standard)

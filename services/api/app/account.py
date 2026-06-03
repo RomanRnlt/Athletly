@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Account-level data export (GDPR Art. 20) and full erasure (Art. 17).
 
 Both operate via the service-role client and are always scoped by the

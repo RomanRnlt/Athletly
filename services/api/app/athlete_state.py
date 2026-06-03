@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Objektiver Fitness-Snapshot aus den letzten 28 Tagen Aktivitaeten + 14 Tagen
 Daily-Metrics. Code rechnet, das LLM interpretiert.
 

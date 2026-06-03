@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from './api';
 import type { StatusEvent, ToolCallEvent, ToolResultEvent } from './api';

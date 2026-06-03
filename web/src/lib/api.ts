@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Web port of mobile/lib/api.ts.
 //
 // Same backend (services/api), same endpoints, same request patterns. The one

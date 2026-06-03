@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Badge } from '@/components/ui/Badge';

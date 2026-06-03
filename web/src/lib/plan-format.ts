@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Ported 1:1 from mobile/lib/plan-format.ts. Pure presentation helpers.
 import type {
   Group,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * ShowWorkFooter - collapsible "what the agent did" log under a finished
  * assistant message. Closed by default; tap to expand the full step list

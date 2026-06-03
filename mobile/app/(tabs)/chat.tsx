@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useMemo } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';

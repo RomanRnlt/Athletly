@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Colors } from '@athletly/shared';

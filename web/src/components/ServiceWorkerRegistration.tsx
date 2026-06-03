@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Registers the app-shell service worker. Guarded so it only runs in the
 // browser and only in production (no SW noise during `next dev`).

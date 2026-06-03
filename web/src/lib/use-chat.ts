@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Ported 1:1 from mobile/lib/use-chat.ts. The streaming contract is identical;
 // streamChat (api.ts) abstracts away the EventSource vs fetch-SSE difference.

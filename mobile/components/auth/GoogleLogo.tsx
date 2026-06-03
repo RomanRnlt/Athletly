@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 

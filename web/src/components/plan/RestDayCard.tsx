@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Ported 1:1 from mobile/components/plan/RestDayCard.tsx.
 import React from 'react';

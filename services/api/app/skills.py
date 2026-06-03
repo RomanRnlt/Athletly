@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Skill loader + discovery (Agent Skills standard, agentskills.io).
 
 A skill is a DIRECTORY ``skills/<name>/SKILL.md`` with YAML frontmatter

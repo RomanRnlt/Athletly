@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of the bottom tab bar from mobile/app/(tabs)/_layout.tsx. Three
 // tabs (Plan, Chat, Settings); the Chat tab shows a red "1" badge while

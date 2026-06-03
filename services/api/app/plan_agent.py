@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Plan generation entry point.
 
 The plan feature is now declared, not coded: two AgentSpecs in `agents.py`

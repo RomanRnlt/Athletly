@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/ui/Input.tsx. TextInput -> <input>, with the
 // same label/leftIcon/password-toggle layout and focus border behavior.

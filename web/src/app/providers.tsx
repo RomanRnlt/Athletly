@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 /**
  * Web equivalent of mobile/app/_layout.tsx. Reproduces the same gating:

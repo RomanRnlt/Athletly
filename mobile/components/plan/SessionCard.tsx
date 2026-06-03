@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /**
  * SessionCard - renders a planned session in the universal grammar (ADR 0001).
  *

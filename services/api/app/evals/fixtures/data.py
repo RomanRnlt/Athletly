@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Golden fixtures for the plan eval harness.
 
 Each fixture is a deterministic, self-contained athlete scenario: profile

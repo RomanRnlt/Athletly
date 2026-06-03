@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { MessageCircle } from 'lucide-react-native';

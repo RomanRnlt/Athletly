@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 // Web port of mobile/components/plan/WeeklySummary.tsx.
 import React, { useMemo } from 'react';

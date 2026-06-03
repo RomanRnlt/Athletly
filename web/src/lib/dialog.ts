@@ -1,4 +1,5 @@
 'use client';
+// SPDX-License-Identifier: MIT
 
 /**
  * Web stand-in for React Native's Alert.alert. The mobile app uses native
