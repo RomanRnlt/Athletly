@@ -213,8 +213,6 @@ flowchart LR
 - **Deterministic second pass, validator script.** After the terminal call, the skill's bundled `validator` (e.g. `scripts/validate_plan.py`) runs `coerce()` then `validate()`: it fixes serialization slips and surfaces grammar issues, never raising. Domain rules live in the skill's own script; the engine just triggers it.
 - **Provider-agnostic, LiteLLM.** All model calls go through LiteLLM, so the model is a config value (Claude by default, Gemini or others by changing one env var).
 
-> Note: `pydantic-ai` is listed as a dependency from the original scaffold but is not used; the agent loop is built directly on LiteLLM.
-
 ---
 
 ## Eval Harness: Golden Fixtures + LLM Judge
@@ -386,10 +384,9 @@ npm install                      # installs the web + mobile workspaces
 ### 2. Backend (`services/api`)
 ```bash
 cd services/api
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+uv sync                          # creates .venv + installs deps (or: pip install -e .)
 cp .env.example .env             # fill in the values below
-uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8000
 ```
 Required env (`services/api/.env`):
 ```
