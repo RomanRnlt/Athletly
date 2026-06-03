@@ -80,7 +80,7 @@ export default function AthleteProfileScreen() {
   const { sections, isEmpty, isLoading, error, refresh } = useAthleteProfile();
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-h-screen">
+    <div className="flex-1 min-h-0 h-full flex flex-col bg-background">
       <GradientHeader
         title="Wie Athletly dich sieht"
         subtitle="Was Ohm dauerhaft ueber dich weiss"

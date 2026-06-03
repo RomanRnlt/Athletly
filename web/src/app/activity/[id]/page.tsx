@@ -87,7 +87,7 @@ export default function ActivityDetailScreen() {
   const title = (extras.activity_name as string) || getSportLabel(sport);
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-h-screen">
+    <div className="flex-1 min-h-0 h-full flex flex-col bg-background">
       <GradientHeader
         title={getSportLabel(sport)}
         subtitle={activity ? fmtActivityDate(activity.start_time) : ''}
