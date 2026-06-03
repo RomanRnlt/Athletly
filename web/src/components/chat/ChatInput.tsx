@@ -4,7 +4,7 @@
 // auto-growing <textarea>; Enter sends, Shift+Enter inserts a newline.
 import React, { useRef, useState } from 'react';
 import { Mic, Send } from 'lucide-react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface ChatInputProps {
   onSend: (text: string) => void;

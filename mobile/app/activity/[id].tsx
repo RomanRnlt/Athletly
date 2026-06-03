@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { GradientHeader } from '@/components/ui/GradientHeader';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon, getSportLabel } from '@/lib/sport-icons';
 import {

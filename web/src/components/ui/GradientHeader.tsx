@@ -3,7 +3,7 @@
 // Web port of mobile/components/ui/GradientHeader.tsx. LinearGradient -> CSS
 // background gradient (BRAND_GRADIENT), safe-area inset -> a small top padding.
 import React, { type ReactNode } from 'react';
-import { BRAND_GRADIENT } from '@/lib/colors';
+import { BRAND_GRADIENT } from '@athletly/shared';
 
 interface GradientHeaderProps {
   title?: string;

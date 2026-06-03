@@ -10,7 +10,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Colors, BRAND_GRADIENT } from '@/lib/colors';
+import { Colors, BRAND_GRADIENT } from '@athletly/shared';
 import { notify } from '@/lib/dialog';
 
 const FALLBACK_MONTHLY = '9,99 EUR';

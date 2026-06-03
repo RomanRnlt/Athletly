@@ -8,7 +8,7 @@ import { ShieldCheck, HeartPulse, Cpu, Trash2, type LucideIcon } from 'lucide-re
 import { Button } from '@/components/ui/Button';
 import { signOut } from '@/lib/use-auth';
 import { useConsent } from '@/lib/consent-context';
-import { Colors, BRAND_GRADIENT } from '@/lib/colors';
+import { Colors, BRAND_GRADIENT } from '@athletly/shared';
 import { confirmAction, notify } from '@/lib/dialog';
 
 function Point({

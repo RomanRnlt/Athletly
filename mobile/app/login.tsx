@@ -15,7 +15,7 @@ import { Mail, ArrowRight } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { GoogleLogo } from '@/components/auth/GoogleLogo';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import {
   signInWithEmail,
   signUpWithEmail,

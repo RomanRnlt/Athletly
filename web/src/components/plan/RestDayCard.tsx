@@ -4,7 +4,7 @@
 import React from 'react';
 import { Moon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface RestDayCardProps {
   message?: string;

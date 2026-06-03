@@ -33,7 +33,7 @@ import { signOut, useAuth } from '@/lib/use-auth';
 import { useConsent } from '@/lib/consent-context';
 import { useUsage } from '@/lib/use-usage';
 import { deleteAccount, exportAccountData } from '@/lib/use-account';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 function SectionTitle({ children }: { children: string }) {
   return (

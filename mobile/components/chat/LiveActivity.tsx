@@ -7,8 +7,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { Colors } from '@/lib/colors';
-import type { ToolStep } from '@/types/chat';
+import { Colors } from '@athletly/shared';
+import type { ToolStep } from '@athletly/shared';
 
 const AGENT_LABELS: Record<string, string> = {
   plan: 'Plan-Agent',

@@ -2,7 +2,7 @@
 
 // Ported 1:1 from mobile/components/chat/OnboardingBar.tsx.
 import React from 'react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 const ONBOARDING_TARGET_SECTIONS = 5;
 

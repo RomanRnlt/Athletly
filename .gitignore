@@ -11,6 +11,13 @@ Thumbs.db
 # Logs
 *.log
 
+# --- monorepo (npm workspaces) ---
+# Single hoisted install at the root + any nested workspace installs.
+node_modules/
+# Web (Next.js) build output.
+web/.next/
+web/out/
+
 # Secrets (per-service .env files are gitignored, .env.example is committed)
 .env
 .env.local

@@ -8,7 +8,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/use-auth';
 import { ConsentProvider, useConsent } from '@/lib/consent-context';
 import { configurePurchases } from '@/lib/purchases';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 function Splash() {
   return (

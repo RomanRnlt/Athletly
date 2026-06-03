@@ -3,8 +3,8 @@
 // Web port of mobile/components/chat/LiveActivity.tsx. StyleSheet -> Tailwind +
 // inline styles; same derive-current logic and elapsed timer.
 import React, { useEffect, useState } from 'react';
-import { Colors } from '@/lib/colors';
-import type { ToolStep } from '@/types/chat';
+import { Colors } from '@athletly/shared';
+import type { ToolStep } from '@athletly/shared';
 
 const AGENT_LABELS: Record<string, string> = {
   plan: 'Plan-Agent',

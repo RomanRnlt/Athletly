@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface ServiceStatusProps {
   name: string;

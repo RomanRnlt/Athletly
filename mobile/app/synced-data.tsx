@@ -5,7 +5,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { GradientHeader } from '@/components/ui/GradientHeader';
 import { ActivityCard } from '@/components/data/ActivityCard';
 import { HealthDayCard } from '@/components/data/HealthDayCard';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportLabel } from '@/lib/sport-icons';
 import { useActivities } from '@/lib/use-activities';
 import { useMetrics, type DailyMetric } from '@/lib/use-metrics';

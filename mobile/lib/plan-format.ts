@@ -11,7 +11,7 @@ import type {
   SessionIntent,
   StepRole,
   Target,
-} from '@/types/plan';
+} from '@athletly/shared';
 
 const INTENT_LABELS: Record<SessionIntent, string> = {
   recovery: 'Erholung',

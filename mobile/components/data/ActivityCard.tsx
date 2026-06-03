@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Clock, MapPin, Heart, Mountain, ChevronRight } from 'lucide-react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon, getSportLabel } from '@/lib/sport-icons';
 import type { Activity } from '@/lib/use-activities';

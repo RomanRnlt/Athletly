@@ -2,10 +2,10 @@
 
 // Web port of mobile/components/chat/ChatBubble.tsx.
 import React from 'react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { LiveActivity } from './LiveActivity';
 import { ShowWorkFooter } from './ShowWorkFooter';
-import type { ChatMessage, ToolStep } from '@/types/chat';
+import type { ChatMessage, ToolStep } from '@athletly/shared';
 
 interface ChatBubbleProps {
   message: ChatMessage;

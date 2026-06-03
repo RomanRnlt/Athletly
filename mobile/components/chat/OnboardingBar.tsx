@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 const ONBOARDING_TARGET_SECTIONS = 5;
 

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { GradientHeader } from '@/components/ui/GradientHeader';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { fmtHealthDate, fmtSleepDuration, scoreColor } from '@/components/data/HealthDayCard';
 import type { DailyMetric } from '@/lib/use-metrics';
 

@@ -4,7 +4,7 @@
 // are reused by the activity detail page (same as mobile).
 import React from 'react';
 import { Clock, MapPin, Heart, Mountain, ChevronRight, type LucideIcon } from 'lucide-react';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon, getSportLabel } from '@/lib/sport-icons';
 import type { Activity } from '@/lib/use-activities';

@@ -6,7 +6,7 @@ import { ShieldCheck, HeartPulse, Cpu, Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { signOut } from '@/lib/use-auth';
 import { useConsent } from '@/lib/consent-context';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 function Point({
   icon: Icon,

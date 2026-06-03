@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { LiveActivity } from '@/components/chat/LiveActivity';
 import { ShowWorkFooter } from '@/components/chat/ShowWorkFooter';
-import type { ChatMessage, ToolStep } from '@/types/chat';
+import type { ChatMessage, ToolStep } from '@athletly/shared';
 
 interface ChatBubbleProps {
   message: ChatMessage;

@@ -5,7 +5,7 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { GradientHeader } from '@/components/ui/GradientHeader';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportIcon, getSportLabel } from '@/lib/sport-icons';
 import { fmtActivityDate, fmtDuration, fmtPace } from '@/components/data/ActivityCard';

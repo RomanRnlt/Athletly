@@ -5,7 +5,7 @@ import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface ServiceStatusProps {
   name: string;

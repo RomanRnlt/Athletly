@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Moon } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 interface RestDayCardProps {
   message?: string;

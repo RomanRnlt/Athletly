@@ -11,7 +11,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Clock, CheckCircle2 } from 'lucide-react-native';
 import { Badge } from '@/components/ui/Badge';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportLabel } from '@/lib/sport-icons';
 import {
@@ -23,7 +23,7 @@ import {
   getIntentTier,
   getRoleLabel,
 } from '@/lib/plan-format';
-import type { Group, PlannedSession, Step } from '@/types/plan';
+import type { Group, PlannedSession, Step } from '@athletly/shared';
 
 interface SessionCardProps {
   session: PlannedSession;

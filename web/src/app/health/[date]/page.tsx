@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { GradientHeader } from '@/components/ui/GradientHeader';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { fmtHealthDate, fmtSleepDuration, scoreColor } from '@/components/data/HealthDayCard';
 import type { DailyMetric } from '@/lib/use-metrics';
 

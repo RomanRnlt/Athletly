@@ -13,7 +13,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/use-auth';
 import { ConsentProvider, useConsent } from '@/lib/consent-context';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 
 function Splash() {
   return (

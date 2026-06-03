@@ -2,10 +2,10 @@ import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { MessageCircle } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
-import { Colors } from '@/lib/colors';
+import { Colors } from '@athletly/shared';
 import { getSportColor } from '@/lib/sport-colors';
 import { getSportLabel } from '@/lib/sport-icons';
-import type { WeeklyPlan, PlannedSession } from '@/types/plan';
+import type { WeeklyPlan, PlannedSession } from '@athletly/shared';
 
 interface WeeklySummaryProps {
   plan: WeeklyPlan;
