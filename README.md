@@ -101,15 +101,36 @@ The central idea: **Agent = Skill + Model**. A skill is a directory (`skills/<na
 
 ```mermaid
 flowchart LR
-    SKILL["SKILL.md folder<br/>frontmatter + body + scripts/"] --> SPEC["AgentSpec<br/>(agents.py)"]
-    SPEC --> ENGINE["build_agent → Pydantic AI<br/>(app/pai/)"]
-    ENGINE -->|"+ model"| AGENT(["Running Agent"])
-    AGENT -->|"spawns child as a tool"| CHILD(["Child Agent"])
+    subgraph SKILL["SKILL.md (a folder)"]
+        BODY["body → instructions"]
+        TOOLS["allowed-tools"]
+        MODEL["model"]
+        SPAWNS["spawns"]
+        TERM["terminal_tool + output kind"]
+    end
 
-    style SKILL fill:#7C3AED,stroke:#4F46E5,color:#fff
-    style SPEC fill:#2563EB,stroke:#1D4ED8,color:#fff
-    style ENGINE fill:#2563EB,stroke:#1D4ED8,color:#fff
+    subgraph BUILD["build_agent (app/pai)"]
+        AGENT["Pydantic AI Agent"]
+    end
+
+    BODY -->|"system prompt"| AGENT
+    TOOLS -->|"Tool.from_schema"| AGENT
+    MODEL --> AGENT
+    SPAWNS -->|"delegation tools"| AGENT
+    TERM -->|"ToolOutput(TrainingPlan)"| AGENT
+
+    AGENT --> RUN["agent.run(deps=Deps)"]
+    RUN -->|"validate + coerce<br/>(2 weeks / 7 days)"| OUT(["Typed plan"])
+    RUN -.->|"spawn delegation"| CHILD(["Child Agent (evaluate-plan)"])
+
+    style BODY fill:#7C3AED,stroke:#4F46E5,color:#fff
+    style TOOLS fill:#7C3AED,stroke:#4F46E5,color:#fff
+    style MODEL fill:#7C3AED,stroke:#4F46E5,color:#fff
+    style SPAWNS fill:#7C3AED,stroke:#4F46E5,color:#fff
+    style TERM fill:#7C3AED,stroke:#4F46E5,color:#fff
     style AGENT fill:#4F46E5,stroke:#7C3AED,color:#fff
+    style RUN fill:#2563EB,stroke:#1D4ED8,color:#fff
+    style OUT fill:#22C55E,stroke:#16A34A,color:#fff
     style CHILD fill:#4F46E5,stroke:#7C3AED,color:#fff
 ```
 
