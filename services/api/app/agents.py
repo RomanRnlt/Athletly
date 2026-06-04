@@ -26,6 +26,7 @@ from typing import Any
 from pydantic_ai import RunContext, Tool, ToolOutput, UsageLimits
 
 from . import tools as tools_mod
+from . import usage
 from .config import settings
 from .pai.deps import Deps
 from .pai.factory import build_agent
@@ -422,6 +423,9 @@ async def spawn(
     except Exception as exc:
         logger.exception("pydantic-ai run failed for agent %s", name)
         return {"error": f"agent run failed: {exc}"}
+
+    # Fold this agent's token usage into the per-request credit meter.
+    usage.add_pai_run(run, spec.model)
 
     result: dict[str, Any] = run.output.model_dump()
     if spec.validator and "error" not in result:
