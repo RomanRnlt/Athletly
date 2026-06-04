@@ -148,6 +148,33 @@ def add_response(response: Any, model: str | None = None) -> None:
         logger.debug("completion_cost failed for model=%s", model, exc_info=True)
 
 
+def add_pai_run(run: Any, model: str | None = None) -> None:
+    """Accumulate a pydantic-ai run's usage into the current request meter.
+
+    The plan/evaluator agents now run on pydantic-ai (agent.run), not the litellm
+    loop, so their token usage must be folded in here for the credit meter.
+    """
+    meter = current()
+    if meter is None:
+        return
+    u = getattr(run, "usage", None)
+    if u is None:
+        return
+
+    def _g(key: str) -> int:
+        try:
+            return int(getattr(u, key, 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    meter.prompt_tokens += _g("input_tokens")
+    meter.completion_tokens += _g("output_tokens")
+    meter.cached_tokens += _g("cache_read_tokens")
+    meter.llm_calls += max(1, _g("requests"))
+    if model:
+        meter.models.add(model)
+
+
 # ---------------------------------------------------------------------------
 # Tier + gate
 # ---------------------------------------------------------------------------

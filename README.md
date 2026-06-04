@@ -15,7 +15,7 @@
 
 ---
 
-An AI coaching engine built around a **declarative agent architecture**: an agent is just a **Skill + a Model**. Capabilities are authored as `SKILL.md` folders (the agent registry), not hardcoded. Training plans are produced by a **generator agent that spawns an evaluator agent** and revises until quality passes, and the whole plan agent is guarded by an **eval harness with an LLM judge and severity calibration**. The code computes the objective facts, the LLM only interprets them. One backend (FastAPI + Supabase + LiteLLM) serves two clients from a shared design system: an **Expo** mobile app and a **Next.js** web app.
+An AI coaching engine built around a **declarative agent architecture**: an agent is just a **Skill + a Model**. Capabilities are authored as `SKILL.md` folders (the agent registry), not hardcoded. Training plans are produced by a **generator agent that spawns an evaluator agent** and revises until quality passes, and the whole plan agent is guarded by an **eval harness with an LLM judge and severity calibration**. The code computes the objective facts, the LLM only interprets them. The plan/eval agents run on **Pydantic AI** (typed outputs); the chat coach streams on **LiteLLM**. One backend (FastAPI + Supabase) serves two clients from a shared design system: an **Expo** mobile app and a **Next.js** web app.
 
 ---
 
@@ -102,7 +102,7 @@ The central idea: **Agent = Skill + Model**. A skill is a directory (`skills/<na
 ```mermaid
 flowchart LR
     SKILL["SKILL.md folder<br/>frontmatter + body + scripts/"] --> SPEC["AgentSpec<br/>(agents.py)"]
-    SPEC --> ENGINE["run_subagent engine<br/>(subagent.py)"]
+    SPEC --> ENGINE["build_agent → Pydantic AI<br/>(app/pai/)"]
     ENGINE -->|"+ model"| AGENT(["Running Agent"])
     AGENT -->|"spawns child as a tool"| CHILD(["Child Agent"])
 
@@ -149,7 +149,7 @@ metadata:
 
 1. **Discovery** (`skills.py`): `scan_skills()` walks `skills/`, parses each `SKILL.md` frontmatter, and yields `ParsedSkill`s. The body (with `${SKILL_DIR}` substituted) becomes the system prompt.
 2. **Registry** (`agents.py`): each `spawn`-activation skill becomes a frozen `AgentSpec`; `AGENT_SPECS` is built once at import. Inline skills (e.g. onboarding) are not registry agents, code injects them into the chat prompt on a deterministic trigger.
-3. **Run** (`subagent.py`): `run_subagent()` is the generic engine. It seeds a conversation with the skill body as system prompt + the task, then loops: call the model with the skill's tools + its terminal tool, execute any tool calls, append results, repeat. The run ends when the model calls the terminal tool (its args = the structured result) or hits `max_turns`.
+3. **Run** (`app/pai/`): `build_agent()` compiles the spec into a typed **Pydantic AI** `Agent`, the skill body as system prompt, the allowed-tools wrapped from `tools.py` (`Tool.from_schema`), and a Pydantic `output_type`. Pydantic AI drives the tool-calling loop; the run ends when the model calls the named output tool (validated against the model). Child agents are exposed as delegation tools, so spawning is just a tool call that runs another agent.
 
 All operational config lives in the skill; all plumbing in `skills.py` + `agents.py` + `subagent.py`. A new agent is a new `SKILL.md`, no Python.
 
@@ -190,14 +190,14 @@ Plans are written in a single **session grammar** so the same structure renders 
 
 ## Structured Outputs, Validation & Pydantic
 
-The system is typed at three boundaries: **Pydantic** at the HTTP edges, **JSON Schema + a validator script** for agent outputs, and **LiteLLM** as the model gateway in between.
+The spawned plan + evaluator agents run on **Pydantic AI**: a skill compiles into a typed `Agent` whose `output_type` is a Pydantic model, so the structure is validated (and coerced) before anything ships. Pydantic also guards the HTTP edges. The streaming chat coach runs on **LiteLLM**.
 
 ```mermaid
 flowchart LR
     A["HTTP request"] -->|"Pydantic v2"| B["FastAPI handler"]
-    B --> C["Agent (LiteLLM tool loop)"]
-    C -->|"terminal-tool args<br/>matched to JSON Schema"| D["Structured result"]
-    D -->|"validator script<br/>coerce + validate"| E["Clean result"]
+    B --> C["Agent (Pydantic AI)"]
+    C -->|"output_type = TrainingPlan"| D["Validated model"]
+    D -->|"validators coerce<br/>2 weeks / 7 days"| E["Valid structure"]
     E -->|"Pydantic v2"| F["HTTP response"]
 
     style A fill:#7C3AED,stroke:#4F46E5,color:#fff
@@ -209,9 +209,9 @@ flowchart LR
 ```
 
 - **API boundary, Pydantic v2.** Every request and response is a Pydantic model (`schemas.py`), validated by FastAPI. Untrusted input never reaches the agent unvalidated.
-- **Agent output, JSON Schema terminal tools.** An agent finishes by calling its `terminal_tool`; that tool's parameters are a JSON Schema (e.g. `PLAN_SCHEMA` in `SCHEMA_REGISTRY`). The model must return arguments matching that shape, so the structured result is shaped by construction.
-- **Deterministic second pass, validator script.** After the terminal call, the skill's bundled `validator` (e.g. `scripts/validate_plan.py`) runs `coerce()` then `validate()`: it fixes serialization slips and surfaces grammar issues, never raising. Domain rules live in the skill's own script; the engine just triggers it.
-- **Provider-agnostic, LiteLLM.** All model calls go through LiteLLM, so the model is a config value (Claude by default, Gemini or others by changing one env var).
+- **Agent output, typed via Pydantic AI.** A spawned agent's `output_type` is a Pydantic model (`TrainingPlan`, `EvaluationResult` in `app/pai/models.py`), exposed as a named output tool (`submit_plan`). The model's submission is validated against the model; the model's structured grammar (sessions, groups, steps) passes through as raw dicts so the typing never corrupts it.
+- **Structure by construction.** Validators enforce the invariants the eval baseline exposed, exactly 2 weeks and 7 days per week, and **coerce** rather than reject (trim/pad), so a plan always submits with valid structure instead of looping on retries. This took the plan agent from 0/6 to 3/6 on the eval harness; the remaining failures are content quality, not structure.
+- **Two engines, on purpose.** The multi-agent plan/eval path runs on Pydantic AI (typed outputs + agent delegation for spawning); the single-agent streaming chat coach runs on LiteLLM. Both are provider-agnostic (Claude by default).
 
 ---
 
@@ -317,7 +317,8 @@ The web app ships a **demo mode** (`NEXT_PUBLIC_DEMO_MODE=true`): seeded athlete
 | Layer | Technology | Role |
 |---|---|---|
 | **Backend** | FastAPI + Uvicorn | Async API + SSE streaming |
-| **LLM Gateway** | LiteLLM | Provider-agnostic LLM calls (Claude default, Gemini configurable) |
+| **Agent runtime** | Pydantic AI | Typed plan/eval agents (output_type, validation, spawn delegation) |
+| **LLM Gateway** | LiteLLM | Provider-agnostic model access (chat coach + Pydantic AI) |
 | **Primary Model** | Claude (Sonnet) | Coach agent, plan generation, evaluation |
 | **Database** | Supabase (PostgreSQL + RLS) | Persistence, row-level security, auth |
 | **Auth** | Supabase JWT (ES256, JWKS) | Stateless token verification |
@@ -338,8 +339,8 @@ athletly/                        # npm-workspaces monorepo
 │   ├── app/
 │   │   ├── main.py              #   Routes: chat (SSE), garmin, profile, account, billing
 │   │   ├── agent.py             #   Coach agent: LiteLLM streaming + tool loop + prompt caching
-│   │   ├── agents.py            #   SKILL.md -> AgentSpec; spawn wiring + nesting
-│   │   ├── subagent.py          #   Generic agent run engine (tool-calling loop)
+│   │   ├── agents.py            #   SKILL.md -> AgentSpec; spawn via Pydantic AI delegation
+│   │   ├── pai/                 #   Pydantic AI layer: build_agent, typed models, tool adapter, Deps
 │   │   ├── plan_agent.py        #   Plan entry: spawns the generator (which nests the evaluator)
 │   │   ├── tools.py             #   Tool registry + schemas
 │   │   ├── athlete_state.py     #   Objective fitness compute (ACWR, volume, paces, recovery)

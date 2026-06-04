@@ -23,10 +23,15 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
+from pydantic_ai import RunContext, Tool, ToolOutput, UsageLimits
+
 from . import tools as tools_mod
+from . import usage
 from .config import settings
+from .pai.deps import Deps
+from .pai.factory import build_agent
+from .pai.models import EvaluationResult, TrainingPlan
 from .skills import ParsedSkill, get_skill, load_skill, scan_skills
-from .subagent import EarlyTerminal, run_subagent
 
 logger = logging.getLogger(__name__)
 
@@ -302,19 +307,29 @@ def _derive_binding_approval(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _make_spawn_handler(
+def _output_type_for(spec: AgentSpec) -> ToolOutput[Any]:
+    """The agent's typed output, exposed as a tool named like the skill's
+    terminal tool (so the skill body's 'call submit_plan' instructions match).
+    pydantic-ai validates the model's args against the Pydantic model and
+    retries on a structural violation (e.g. an 8-day week)."""
+    model = TrainingPlan if spec.output_kind == "training_plan" else EvaluationResult
+    return ToolOutput(
+        model,
+        name=spec.terminal_tool or "submit",
+        description=spec.terminal_description,
+    )
+
+
+def _make_spawn_tool(
     child: AgentSpec,
-    account_id: str,
     on_event: EventSink | None,
     depth: int,
-) -> Any:
-    """Tool handler a parent calls to launch ``child``. Enforces the optional
-    round cap: once exceeded, returns a forced-approval verdict so the parent
-    stops looping and submits its best draft (quality judgement stays with the
-    child skill; the cap only counts rounds)."""
+) -> Tool[Deps]:
+    """Expose ``child`` to its parent as a pydantic-ai delegation tool: calling
+    it runs the child agent. Preserves the round cap (after the cap, force a
+    pass so the parent submits its best draft) and the deterministic approval."""
 
     state = {"rounds": 0}
-    # The child runs at spawn _depth=`depth`; its events render at depth+1.
     child_display_depth = depth + 1
 
     async def _status(label: str) -> None:
@@ -324,21 +339,15 @@ def _make_spawn_handler(
                 {"label": label, "depth": child_display_depth, "agent": child.name},
             )
 
-    async def handler(**args: Any) -> dict[str, Any]:
+    async def handler(ctx: RunContext[Deps], **args: Any) -> dict[str, Any]:
         state["rounds"] += 1
         if child.round_cap is not None and state["rounds"] > child.round_cap:
             logger.info(
-                "spawn cap: %s reached %d rounds, submitting best draft directly",
+                "spawn cap: %s reached %d rounds, forcing a pass",
                 child.name,
                 child.round_cap,
             )
             await _status(f"{child.name}: Cap erreicht, bester Entwurf wird genommen")
-            # The artifact passed to this spawn tool IS the parent's deliverable
-            # (evaluate_plan(plan=...) -> the plan). End the parent run with it
-            # directly instead of paying for another full generation + submit.
-            payload = args.get(child.spawn_arg) if child.spawn_arg else None
-            if isinstance(payload, dict):
-                raise EarlyTerminal(payload)
             return {
                 "approved": True,
                 "forced": True,
@@ -353,10 +362,16 @@ def _make_spawn_handler(
             }
         await _status(f"{child.name} laeuft")
         task = _SPAWN_TASK_PREFIX + json.dumps(args, ensure_ascii=False)
-        result = await spawn(child.name, task, account_id, on_event, depth)
+        result = await spawn(child.name, task, ctx.deps.account_id, on_event, depth)
         return _derive_binding_approval(result)
 
-    return handler
+    return Tool.from_schema(
+        function=handler,
+        name=child.spawn_tool_name or child.name,
+        description=child.spawn_description,
+        json_schema=child.spawn_input_schema or {"type": "object", "properties": {}},
+        takes_ctx=True,
+    )
 
 
 async def spawn(
@@ -366,50 +381,53 @@ async def spawn(
     on_event: EventSink | None = None,
     _depth: int = 0,
 ) -> dict[str, Any]:
-    """Launch the agent ``name`` with ``task``. Returns the terminal tool's
-    arguments (the structured result) or {"error": ...}."""
+    """Launch the agent ``name`` with ``task`` via pydantic-ai. Returns the typed
+    output as a dict (the structured result) or {"error": ...}."""
     spec = AGENT_SPECS.get(name)
     if spec is None:
         return {"error": f"unknown agent: {name}"}
     if _depth > MAX_SPAWN_DEPTH:
         return {"error": f"max spawn depth ({MAX_SPAWN_DEPTH}) exceeded"}
 
-    tools: list[dict[str, Any]] = list(tools_mod.schemas_for(set(spec.tools)))
-    tools.append(_terminal_tool_schema(spec))
-    registry = _data_registry(account_id, spec.tools)
+    extra_tools = [
+        _make_spawn_tool(AGENT_SPECS[child_name], on_event, _depth + 1)
+        for child_name in spec.spawns
+    ]
 
-    for child_name in spec.spawns:
-        child = AGENT_SPECS[child_name]
-        tools.append(_spawn_tool_schema(child))
-        registry[child.spawn_tool_name] = _make_spawn_handler(  # type: ignore[index]
-            child, account_id, on_event, _depth + 1
-        )
-
-    # Tag every event this agent emits with its nesting depth + name, so the
-    # client can render sub-agent work indented (Claude-Code style). The coach
-    # is the implicit depth-0 root, so a spawned agent renders at _depth + 1.
-    display_depth = _depth + 1
-
-    async def sink(event_type: str, payload: dict[str, Any]) -> None:
-        if on_event is None:
-            return
-        tagged = dict(payload)
-        tagged.setdefault("depth", display_depth)
-        tagged.setdefault("agent", spec.name)
-        await on_event(event_type, tagged)
-
-    result = await run_subagent(
-        skill=load_skill(spec.skill),
+    agent = build_agent(
         model=spec.model,
-        task=task,
-        tools=tools,
-        registry=registry,
-        terminal_tool=spec.terminal_tool,
-        max_turns=spec.max_turns,
-        on_event=sink,
-        label=f"{spec.name}@{_depth}",
+        instructions=load_skill(spec.skill),
+        tool_names=spec.tools,
+        output_type=_output_type_for(spec),
+        extra_tools=extra_tools,
+        retries=3,
     )
 
-    if spec.validator and isinstance(result, dict) and "error" not in result:
+    if on_event is not None:
+        await on_event(
+            "status",
+            {"label": f"{spec.name} laeuft", "depth": _depth, "agent": spec.name},
+        )
+
+    # Bound the tool-calling loop. The old engine capped at spec.max_turns; map
+    # that to pydantic-ai's request budget (each turn is roughly one request,
+    # plus headroom for output-validation retries). Default of 50 is too tight
+    # for a research-heavy 2-week plan generation.
+    request_limit = max(spec.max_turns * 4, 40)
+    try:
+        run = await agent.run(
+            task,
+            deps=Deps(account_id),
+            usage_limits=UsageLimits(request_limit=request_limit),
+        )
+    except Exception as exc:
+        logger.exception("pydantic-ai run failed for agent %s", name)
+        return {"error": f"agent run failed: {exc}"}
+
+    # Fold this agent's token usage into the per-request credit meter.
+    usage.add_pai_run(run, spec.model)
+
+    result: dict[str, Any] = run.output.model_dump()
+    if spec.validator and "error" not in result:
         result = _apply_validator(spec, result)
     return result
