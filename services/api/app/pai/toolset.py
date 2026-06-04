@@ -24,12 +24,27 @@ def _schema_map() -> dict[str, dict[str, Any]]:
     return {s["function"]["name"]: s["function"] for s in legacy.TOOL_SCHEMAS}
 
 
+_RESEARCH_STOP = (
+    "Research budget reached. Stop calling web_search now. Draft the full 2-week "
+    "plan from what you already have, call evaluate_plan once, then submit_plan."
+)
+
+
 def _adapter_for(name: str):
     fn = legacy.TOOL_REGISTRY[name]
 
-    def adapter(ctx: RunContext[Deps], **kwargs: Any) -> dict[str, Any]:
-        # The legacy function takes account_id first, then the validated args.
-        return fn(ctx.deps.account_id, **kwargs)
+    if name == "web_search":
+        def adapter(ctx: RunContext[Deps], **kwargs: Any) -> dict[str, Any]:
+            ctx.deps.web_search_used += 1
+            result = fn(ctx.deps.account_id, **kwargs)
+            # Force progression once the per-run research budget is spent.
+            if ctx.deps.web_search_used >= ctx.deps.web_search_budget:
+                return {**result, "_directive": _RESEARCH_STOP}
+            return result
+    else:
+        def adapter(ctx: RunContext[Deps], **kwargs: Any) -> dict[str, Any]:
+            # The legacy function takes account_id first, then the validated args.
+            return fn(ctx.deps.account_id, **kwargs)
 
     adapter.__name__ = f"tool_{name}"
     return adapter

@@ -26,14 +26,20 @@ def to_pai_model(litellm_model: str) -> str:
     return litellm_model.replace("/", ":", 1)
 
 
-def _cache_settings(model: str) -> dict[str, Any] | None:
-    """Anthropic prompt caching: cache the (stable) instructions + tool defs."""
+# A full 2-week plan (rationale + 14 days of detailed sessions) is large. The
+# previous engine used litellm's high default; pydantic-ai's Anthropic default is
+# only 4096, which truncated the output mid-plan (the `weeks` field went missing).
+MAX_OUTPUT_TOKENS = 32000
+
+
+def _model_settings(model: str) -> dict[str, Any]:
+    """max_tokens generous enough for a full plan, plus Anthropic prompt caching
+    (cache the stable instructions + tool defs)."""
+    settings: dict[str, Any] = {"max_tokens": MAX_OUTPUT_TOKENS}
     if model.startswith("anthropic"):
-        return {
-            "anthropic_cache_instructions": True,
-            "anthropic_cache_tool_definitions": True,
-        }
-    return None
+        settings["anthropic_cache_instructions"] = True
+        settings["anthropic_cache_tool_definitions"] = True
+    return settings
 
 
 def build_agent(
@@ -44,20 +50,25 @@ def build_agent(
     output_type: Any,
     deps_type: type = Deps,
     retries: int = 2,
+    extra_tools: list[Any] | None = None,
 ) -> Agent[Deps, Any]:
     """Construct a pydantic-ai Agent from skill-derived parts.
 
     ``model`` is a litellm-style id (mapped to pydantic-ai form). ``retries`` is
     the output-validation retry budget, so a structural/invariant violation gets
-    re-generated instead of shipped.
+    re-generated instead of shipped. ``extra_tools`` are additional pydantic-ai
+    Tools beyond the skill's allowed-tools, e.g. spawn-delegation tools that run
+    a child agent.
     """
     pai_model = to_pai_model(model)
     return Agent(
         pai_model,
         deps_type=deps_type,
         output_type=output_type,
-        instructions=instructions,
-        tools=build_tools(tool_names),
-        model_settings=_cache_settings(pai_model),
+        # The skill body is the system message (matches the previous engine,
+        # which seeded a {"role": "system", "content": skill} turn).
+        system_prompt=instructions,
+        tools=[*build_tools(tool_names), *(extra_tools or [])],
+        model_settings=_model_settings(pai_model),
         retries=retries,
     )
