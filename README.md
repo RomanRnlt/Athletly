@@ -11,6 +11,9 @@
     <img src="https://img.shields.io/badge/streaming-SSE-blueviolet" alt="SSE">
     <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   </p>
+  <p>
+    <img src="assets/athletly-architecture.gif" alt="Athletly architecture animation" width="100%">
+  </p>
 </div>
 
 ---
